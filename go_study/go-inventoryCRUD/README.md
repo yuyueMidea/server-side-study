@@ -78,3 +78,61 @@ npm run dev
 - 在 产品 列表的“库存”列查看。
 - 或点击产品行「流水」跳到 流水 页筛选该产品的所有交易。
 - 后端提供 GET /api/products/{id}/stock 返回：stock_on_hand、stock_value 等。
+
+4.6 补货告警
+- 在 总览 页底部的“补货告警”区查看。
+- 依据：stock_on_hand <= reorder_level。
+
+**5. 后端 API 速查**
+
+- 通用：请求/响应均为 JSON。出现 400 的常见原因：字段类型不符（如把数字传成字符串）、SKU 重复、产品不存在、库存不足、数量非法等。
+- 产品列表:
+```GET /api/products?q=<kw>&category_id=<id>&limit=&offset=
+→ { items: [...], limit, offset }
+```
+
+查询 / 更新 / 删除：
+```
+GET    /api/products/{id}
+PUT    /api/products/{id}      // 局部更新，留空的字段不影响未填字段
+DELETE /api/products/{id}
+```
+
+**6. 数据与规则说明**
+- 字段类型（重点）
+   - category_id / supplier_id 必须传 number 或 null（不要传字符串 "10086"）。
+   - unit_price / reorder_level 应为 number。
+   - 前端已在保存前做了正确转换与空值处理。
+- SKU 唯一，重复会 400。
+- 负库存：默认禁止。
+- 时间：所有 created_at 为 SQLite datetime('now')，UTC 字符串。
+
+**7. 常见问题排查（FAQ）**
+
+新增产品 400：invalid json
+- 多半是把 number 字段传了字符串。确认请求 payload 里：
+- category_id/supplier_id/unit_price/reorder_level 为 数字或 null，而不是 "10086"、"12" 这类带引号的。
+
+新增流水 400：product not found
+- 该 sqlproduct_id 不存在。
+- 解决：在“产品”页确认 ID 列，或在“新建流水”弹窗用搜索选择器来选择产品（会自动填入 ID）。
+
+出库报 insufficient stock
+- 当前库存不足。
+- 解决：先 IN 入库，或使用 ADJUST 正向调整（取决于业务流程是否允许）。
+
+CORS 报错
+- 若前端与后端不在同域且被阻止，请将后端环境变量 CORS_ORIGIN 设置为你的前端地址（如 http://localhost:5173）并重启后端。
+
+SKU 重复
+- 更换 SKU 或先删除旧记录。
+
+**9. 扩展与建议**
+- 更丰富维表：warehouses、suppliers 的 CRUD 与外键校验。
+- 导入导出：CSV/Excel 批量导入产品、导出流水。
+- 权限与审计：基于 JWT/Session 的鉴权、操作日志、撤销/红冲。
+- 性能：后端增加聚合接口（批量返回所有产品的库存），减少前端 N 次请求。
+- 更强校验：前端表单增加 NaN 检测与提示，后端返回结构化错误码。
+
+
+
