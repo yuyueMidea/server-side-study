@@ -1,25 +1,10 @@
-# Vite + React + TailwindCSS（无需 npx tailwindcss）
+**1. 系统概览**
 
-一个最小可运行模板：已配置好 Tailwind、PostCSS、Vite React 插件。
+后端：Go（net/http）+ SQLite（modernc.org/sqlite 驱动）。
+- 提供产品 CRUD、库存流水（入库/出库/调整）接口。
+- 自动建表、启用 WAL、外键约束、CORS（默认 *）。
+- 库存计算：IN 加、OUT 减、ADJUST 正负都可；默认不允许负库存。
 
-## 使用
-
-```bash
-# 进入项目目录
-cd vite-react-tailwind-starter
-
-# 安装依赖（任选其一）
-npm install
-# 或 pnpm install
-# 或 yarn
-
-# 启动开发
-npm run dev
-# 构建
-npm run build
-# 预览构建产物
-npm run preview
-```
-
-> 若你之前遇到 "@vitejs/plugin-react resolved to an ESM file" 的报错，
-> 确保不要用 `require` 去加载 Vite 配置，保持本模板中的 ESM/模块化写法即可。
+前端：Vite + React（JS）+ TailwindCSS。
+- 三大页面：📊 总览、📦 产品、🔁 流水。
+- 支持搜索、分页、库存预警、弹窗表单、新建流水（带产品搜索选择器）。
