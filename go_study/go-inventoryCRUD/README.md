@@ -25,6 +25,8 @@ npm run dev
 # or pnpm dev / yarn dev
 ```
 
+**目前只需要 npm run dev 一个命令启动 React（Vite）+ Go 后端**
+
 **3. 前端界面与操作**
 
 选项卡（Tabs）
