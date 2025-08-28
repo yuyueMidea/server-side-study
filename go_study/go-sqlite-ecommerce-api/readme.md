@@ -9,3 +9,16 @@
 - 业务指标示例：/analytics/daily-gmv
 - CORS 已开启（前端可跨域直接调用）
 - 可选 /_seed 种子数据（通过环境变量开启）
+
+运行方式：
+```
+go mod init go-sqlite-ecommerce-api
+go get github.com/go-chi/chi/v5 github.com/go-chi/cors modernc.org/sqlite
+```
+
+主要接口示例
+- 健康检查：GET /health
+- 客户：GET/POST /customers, GET/PUT/DELETE /customers/{id}, GET /customers/{id}/summary
+- 商品：GET/POST /products, GET/PUT/DELETE /products/{id}
+- 订单：GET /orders（支持 status/customer_id/from/to 过滤，分页），POST /orders，GET /orders/{id}，PUT /orders/{id}/status，POST /orders/{id}/payments
+- 指标：GET /analytics/daily-gmv?from=YYYY-MM-DD&to=YYYY-MM-DD
