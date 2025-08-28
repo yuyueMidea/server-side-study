@@ -15,6 +15,8 @@
 go mod init go-sqlite-ecommerce-api
 go get github.com/go-chi/chi/v5 github.com/go-chi/cors modernc.org/sqlite
 go run .
+//前端直接打开 index.html
+纯 HTML + CSS + 原生 JavaScript 的单页应用，已按模块拆分：客户、商品、订单（含明细/付款）、分析（每日 GMV 折线图）。默认与 Go+SQLite 后端对接，支持跨域。
 ```
 
 主要接口示例
