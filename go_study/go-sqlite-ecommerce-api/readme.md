@@ -14,6 +14,7 @@
 ```
 go mod init go-sqlite-ecommerce-api
 go get github.com/go-chi/chi/v5 github.com/go-chi/cors modernc.org/sqlite
+go run .
 ```
 
 主要接口示例
