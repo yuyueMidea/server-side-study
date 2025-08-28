@@ -1,0 +1,621 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>电商前端（Go+SQLite 后端 API 演示）</title>
+  <style>
+    :root{
+      --bg:#0b0f19; --panel:#121829; --panel-2:#182033; --muted:#8aa0b4; --txt:#e8eef6;
+      --accent:#5cc8ff; --ok:#5cff9d; --warn:#ffd45c; --err:#ff7b7b;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{margin:0;font:14px/1.45 system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "PingFang SC", "Noto Sans CJK", "Microsoft YaHei", sans-serif;background:linear-gradient(180deg,#0b0f19 0%, #0d1426 100%);color:var(--txt)}
+    header{position:sticky;top:0;z-index:10;background:rgba(11,15,25,.7);backdrop-filter:blur(10px);border-bottom:1px solid #1e2742}
+    .wrap{max-width:1200px;margin:0 auto;padding:16px}
+    h1{font-size:18px;margin:0 0 8px 0;letter-spacing:.5px}
+    .row{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+    input,select,button,textarea{background:#0f172a;border:1px solid #243055;color:var(--txt);padding:8px 10px;border-radius:10px;outline:none}
+    input:focus,select:focus,textarea:focus{border-color:#4676ff}
+    button{cursor:pointer;background:#1a2140}
+    button.primary{background:linear-gradient(135deg,#2b62ff,#6cc8ff);border:0;color:white}
+    button.ghost{background:transparent;border:1px dashed #3a4b79}
+    button.warn{background:#3a2a00;border-color:#704a00}
+    button.danger{background:#3d0e0e;border-color:#6b1a1a}
+    small.muted{color:var(--muted)}
+    .grid{display:grid;grid-template-columns:260px 1fr;gap:16px}
+    nav{background:var(--panel);border:1px solid #1e2742;border-radius:16px;padding:12px;position:sticky;top:76px;height:calc(100vh - 96px);overflow:auto}
+    nav .section-title{padding:8px 10px;font-weight:600;color:#a9b9d2;margin-top:8px}
+    nav button{display:block;width:100%;text-align:left;margin:6px 0;padding:10px;border-radius:12px;border:1px solid #1e2742}
+    nav button.active{background:linear-gradient(180deg,#162040,#111b36);border-color:#2b3a66}
+    main{min-height:75vh}
+    .panel{background:var(--panel);border:1px solid #1e2742;border-radius:16px;padding:14px}
+    .panel h2{font-size:16px;margin:0 0 10px 0}
+    .two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    .table{width:100%;border-collapse:collapse}
+    .table th,.table td{border-bottom:1px solid #223057;padding:8px 6px;text-align:left}
+    .table th{position:sticky;top:0;background:#0f152b;z-index:1}
+    .stack{display:flex;flex-direction:column;gap:8px}
+    .chip{display:inline-flex;padding:2px 8px;border-radius:999px;border:1px solid #2a3a69;color:#bcd}
+    .stat{display:flex;gap:12px;align-items:center;background:var(--panel);border:1px solid #1e2742;border-radius:12px;padding:8px 10px}
+    .stat .num{font-size:18px;font-weight:700}
+    .toolbar{display:flex;flex-wrap:wrap;gap:8px;margin:6px 0}
+    .muted{color:var(--muted)}
+    .right{margin-left:auto}
+    .notice{position:fixed;right:16px;bottom:16px;display:flex;flex-direction:column;gap:8px;z-index:999}
+    .toast{background:#0f172a;border:1px solid #2a385f;padding:10px 12px;border-radius:12px;box-shadow:0 10px 20px rgba(0,0,0,.25)}
+    .badge{font-size:12px;padding:2px 6px;border-radius:6px;border:1px solid #2a3a69;color:#a8c0ff}
+    .status-paid{color:#00e09a}
+    .status-created{color:#a8c0ff}
+    .status-refunded{color:#ffd45c}
+    .status-cancelled{color:#ff7b7b}
+    .code{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace;color:#b9e}
+    .flex{display:flex;gap:12px;align-items:center}
+    .scroll-x{overflow:auto}
+    dialog{border:1px solid #243055;background:#0f152b;color:var(--txt);border-radius:12px;padding:0}
+    dialog header{padding:12px;border-bottom:1px solid #1e2742}
+    dialog .body{padding:12px}
+    dialog footer{padding:12px;border-top:1px solid #1e2742;display:flex;gap:8px;justify-content:flex-end}
+    .kbd{border:1px solid #2a3a69;padding:2px 6px;border-radius:6px;background:#0d1225}
+    .hint{font-size:12px;color:#9ab}
+    .section{display:none}
+    .section.active{display:block}
+    .pilltabs{display:flex;gap:8px;margin:8px 0}
+    .pilltabs button{border-radius:999px;padding:6px 10px}
+    .inline{display:inline-flex;gap:8px;align-items:center}
+    .w-120{width:120px}
+    .w-80{width:80px}
+    .mt8{margin-top:8px}
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap">
+      <h1>电商系统前端（HTML+CSS+JS）<span class="badge">Demo</span></h1>
+      <div class="row">
+        <label>API 地址：<input id="api-base" class="w-120" placeholder="http://localhost:8080"/></label>
+        <button class="primary" id="save-api">保存</button>
+        <small class="muted">跨域已在后端开启；可直接从 file:// 或任意静态服务器打开本页。</small>
+        <div class="right inline">
+          <button id="seed-btn" class="ghost" title="需要后端设置 SEED_ENABLED=true"><span>注入示例数据</span></button>
+          <button id="health-btn" class="ghost">健康检查</button>
+        </div>
+      </div>
+    </div>
+  </header>
+  <div class="wrap grid">
+    <nav>
+      <div class="section-title">模块</div>
+      <button data-nav="customers" class="active">客户 Customers</button>
+      <button data-nav="products">商品 Products</button>
+      <button data-nav="orders">订单 Orders</button>
+      <button data-nav="analytics">分析 Analytics</button>
+      <div class="section-title">快速操作</div>
+      <div class="stack">
+        <button id="refresh-all" class="ghost">刷新全部</button>
+        <small class="muted">提示：表格支持分页；下方表单可新增/更新。</small>
+      </div>
+    </nav>
+
+    <main>
+      <!-- Customers -->
+      <section id="sec-customers" class="section active">
+        <div class="panel">
+          <h2>客户列表</h2>
+          <div class="toolbar">
+            <input id="cust-search" placeholder="按姓名或邮箱搜索" />
+            <button id="cust-search-btn">搜索</button>
+            <span class="right"></span>
+            <button id="cust-prev">上一页</button>
+            <span id="cust-page" class="muted">1</span>
+            <button id="cust-next">下一页</button>
+          </div>
+          <div class="scroll-x">
+            <table class="table" id="cust-table">
+              <thead>
+                <tr><th>ID</th><th>姓名</th><th>邮箱</th><th>注册日</th><th>分群</th><th>操作</th></tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="two mt8">
+          <div class="panel">
+            <h2>新增客户</h2>
+            <div class="stack">
+              <input id="cust-new-name" placeholder="姓名" />
+              <input id="cust-new-email" placeholder="邮箱（可空）" />
+              <input id="cust-new-seg" placeholder="分群（可空）" />
+              <button class="primary" id="cust-create">创建</button>
+            </div>
+          </div>
+          <div class="panel">
+            <h2>客户概览</h2>
+            <div id="cust-summary" class="stack">
+              <small class="muted">点击列表中的「概览」查看。</small>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Products -->
+      <section id="sec-products" class="section">
+        <div class="panel">
+          <h2>商品库</h2>
+          <div class="toolbar">
+            <button id="prod-prev">上一页</button>
+            <span id="prod-page" class="muted">1</span>
+            <button id="prod-next">下一页</button>
+          </div>
+          <div class="scroll-x">
+            <table class="table" id="prod-table">
+              <thead>
+                <tr><th>ID</th><th>名称</th><th>品类</th><th>价格</th><th>成本</th><th>操作</th></tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="panel mt8">
+          <h2>新增商品</h2>
+          <div class="row">
+            <input id="prod-name" placeholder="商品名" class="w-120" />
+            <input id="prod-cat" placeholder="品类" class="w-120" />
+            <input id="prod-price" placeholder="价格（元）" class="w-80" />
+            <input id="prod-cost" placeholder="成本（元）" class="w-80" />
+            <button class="primary" id="prod-create">创建</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Orders -->
+      <section id="sec-orders" class="section">
+        <div class="panel">
+          <h2>订单列表</h2>
+          <div class="toolbar">
+            <select id="ord-status">
+              <option value="">全部状态</option>
+              <option>created</option>
+              <option>paid</option>
+              <option>refunded</option>
+              <option>cancelled</option>
+            </select>
+            <input id="ord-customer" placeholder="客户ID（可空）" class="w-120" />
+            <input id="ord-from" type="date" />
+            <input id="ord-to" type="date" />
+            <button id="ord-filter">筛选</button>
+            <span class="right"></span>
+            <button id="ord-prev">上一页</button>
+            <span id="ord-page" class="muted">1</span>
+            <button id="ord-next">下一页</button>
+          </div>
+          <div class="scroll-x">
+            <table class="table" id="ord-table">
+              <thead>
+                <tr><th>ID</th><th>客户</th><th>下单时间</th><th>状态</th><th>明细金额</th><th>已付</th><th>未付</th><th>操作</th></tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="two mt8">
+          <div class="panel">
+            <h2>创建订单</h2>
+            <div class="stack">
+              <div class="row">
+                <input id="neword-customer" placeholder="客户ID" class="w-120"/>
+                <button class="ghost" id="load-custs">载入客户</button>
+                <select id="neword-customer-sel" class="w-120"></select>
+              </div>
+              <div>
+                <div class="flex"><strong>明细</strong> <button class="ghost" id="add-item">+ 添加明细</button> <button class="ghost" id="load-prods">载入商品</button></div>
+                <div id="items-area" class="stack"></div>
+              </div>
+              <div>
+                <div class="flex"><strong>首付款（可选）</strong> <button class="ghost" id="add-pay">+ 添加付款</button></div>
+                <div id="pays-area" class="stack"></div>
+              </div>
+              <div class="row"><button class="primary" id="create-order">创建订单</button><span id="neword-total" class="muted"></span></div>
+            </div>
+          </div>
+          <div class="panel">
+            <h2>订单详情</h2>
+            <div id="ord-detail" class="stack"><small class="muted">点击列表中的「查看」</small></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Analytics -->
+      <section id="sec-analytics" class="section">
+        <div class="panel">
+          <h2>日 GMV</h2>
+          <div class="toolbar">
+            <input id="ana-from" type="date" />
+            <input id="ana-to" type="date" />
+            <button id="ana-load">加载</button>
+          </div>
+          <div class="stack">
+            <div id="gmv-chart" style="height:220px;border:1px solid #1e2742;border-radius:12px;position:relative;overflow:hidden"></div>
+            <div class="scroll-x">
+              <table class="table"><thead><tr><th>日期</th><th>GMV</th></tr></thead><tbody id="gmv-tbody"></tbody></table>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- Edit dialogs -->
+  <dialog id="dlg-cust">
+    <header><strong>编辑客户</strong></header>
+    <div class="body stack">
+      <input id="dlg-cust-name" placeholder="姓名" />
+      <input id="dlg-cust-email" placeholder="邮箱" />
+      <input id="dlg-cust-seg" placeholder="分群" />
+    </div>
+    <footer>
+      <button id="dlg-cust-cancel">取消</button>
+      <button id="dlg-cust-save" class="primary">保存</button>
+    </footer>
+  </dialog>
+
+  <dialog id="dlg-prod">
+    <header><strong>编辑商品</strong></header>
+    <div class="body stack">
+      <input id="dlg-prod-name" placeholder="名称" />
+      <input id="dlg-prod-cat" placeholder="品类" />
+      <input id="dlg-prod-price" placeholder="价格（元）" />
+      <input id="dlg-prod-cost" placeholder="成本（元）" />
+    </div>
+    <footer>
+      <button id="dlg-prod-cancel">取消</button>
+      <button id="dlg-prod-save" class="primary">保存</button>
+    </footer>
+  </dialog>
+
+  <div class="notice" id="notice"></div>
+
+  <script>
+  // ======== 基础工具 ========
+  const $ = sel => document.querySelector(sel);
+  const $$ = sel => Array.from(document.querySelectorAll(sel));
+  const API = {
+    base: localStorage.getItem('api_base') || 'http://localhost:8080',
+    setBase(v){ this.base = v; localStorage.setItem('api_base', v) },
+    async req(method, path, body){
+      const res = await fetch(this.base + path, { method, headers: { 'Content-Type': 'application/json' }, body: body?JSON.stringify(body):undefined });
+      let data = null; try{ data = await res.json(); } catch(e){}
+      if(!res.ok){ throw new Error((data && (data.error||JSON.stringify(data))) || res.statusText) }
+      return data;
+    },
+    get(p){ return this.req('GET', p) },
+    post(p,b){ return this.req('POST', p, b) },
+    put(p,b){ return this.req('PUT', p, b) },
+    del(p){ return this.req('DELETE', p) },
+  };
+
+  function toast(msg, kind='info'){
+    const n = document.createElement('div');
+    n.className = 'toast';
+    n.textContent = msg; $('#notice').appendChild(n);
+    setTimeout(()=>{ n.remove() }, 2600);
+  }
+  function cents(n){ return Number(n||0) }
+  function fmtCents(n){ const v = cents(n)/100; return v.toLocaleString('zh-CN',{style:'currency',currency:'CNY'}) }
+  function el(tag, attrs={}, ...children){ const e = document.createElement(tag); Object.entries(attrs||{}).forEach(([k,v])=>{ if(k==='class') e.className=v; else if(k==='html') e.innerHTML=v; else e.setAttribute(k,v) }); children.flat().filter(Boolean).forEach(c=> e.append(c.nodeType?c:document.createTextNode(c))); return e }
+  function todayStr(d=new Date()){ return d.toISOString().slice(0,10) }
+
+  // ======== 顶部栏 ========
+  $('#api-base').value = API.base;
+  $('#save-api').onclick = ()=>{ API.setBase($('#api-base').value.trim()); toast('已保存 API 地址'); };
+  $('#health-btn').onclick = async()=>{ try{ const r = await API.get('/health'); toast('健康：'+(r.ok?'OK':'?')) } catch(e){ toast('健康检查失败：'+e.message) } };
+  $('#seed-btn').onclick = async()=>{ try{ const r = await API.post('/_seed',{}); toast('Seed 完成') } catch(e){ toast('Seed 失败：'+e.message) } };
+
+  // ======== 导航 ========
+  $$('nav button[data-nav]').forEach(btn=>{
+    btn.onclick = ()=>{
+      $$('nav button[data-nav]').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      $$('.section').forEach(s=>s.classList.remove('active'));
+      $('#sec-'+btn.dataset.nav).classList.add('active');
+    }
+  });
+  $('#refresh-all').onclick = ()=>{ loadCustomers(); loadProducts(); loadOrders(); };
+
+  // ======== Customers ========
+  let custPage=1; const custSize=20; let editingCustomerId=null;
+  async function loadCustomers(){
+    const q = encodeURIComponent($('#cust-search').value.trim());
+    const url = `/customers/?page=${custPage}&page_size=${custSize}` + (q?`&search=${q}`:'');
+    try{
+      const r = await API.get(url);
+      $('#cust-page').textContent = String(custPage);
+      const tb = $('#cust-table tbody'); tb.innerHTML = '';
+      r.data.forEach(c=>{
+        const tr = el('tr',{},
+          el('td',{},c.customer_id),
+          el('td',{},c.name),
+          el('td',{},c.email||''),
+          el('td',{},c.signup_date||''),
+          el('td',{},c.segment||''),
+          el('td',{},
+            el('div',{class:'inline'},
+              el('button',{class:'ghost',onclick:()=>showCustSummary(c.customer_id)},'概览'),
+              el('button',{onclick:()=>openCustEdit(c)},'编辑'),
+              el('button',{class:'danger',onclick:()=>delCustomer(c.customer_id)},'删除')
+            )
+          ),
+        );
+        tb.appendChild(tr);
+      });
+    }catch(e){ toast('加载客户失败：'+e.message) }
+  }
+  $('#cust-prev').onclick = ()=>{ if(custPage>1){ custPage--; loadCustomers() } };
+  $('#cust-next').onclick = ()=>{ custPage++; loadCustomers() };
+  $('#cust-search-btn').onclick = ()=>{ custPage=1; loadCustomers() };
+
+  async function createCustomer(){
+    const name=$('#cust-new-name').value.trim(); const email=$('#cust-new-email').value.trim(); const seg=$('#cust-new-seg').value.trim();
+    if(!name){ toast('姓名必填'); return }
+    try{ await API.post('/customers/', {name, email: email||undefined, segment: seg||undefined}); toast('已创建'); loadCustomers(); }catch(e){ toast('创建失败：'+e.message) }
+  }
+  $('#cust-create').onclick = createCustomer;
+
+  async function delCustomer(id){ if(!confirm('确认删除客户 '+id+' ?')) return; try{ await API.del('/customers/'+id); toast('已删除'); loadCustomers() }catch(e){ toast('删除失败：'+e.message) } }
+  async function showCustSummary(id){ try{ const s = await API.get(`/customers/${id}/summary`); $('#cust-summary').innerHTML = '';
+      $('#cust-summary').append(
+        el('div',{class:'stat'}, el('div',{},'客户ID：', el('span',{class:'code'}, s.customer_id)), el('div',{class:'num'}, s.name)),
+        el('div',{}, '邮箱：', s.email||'-'),
+        el('div',{}, '注册：', s.signup_date||''),
+        el('div',{}, '订单数：', String(s.orders),'，GMV：', fmtCents(s.gmv_cents))
+      )
+    }catch(e){ toast('加载概览失败：'+e.message) } }
+
+  function openCustEdit(c){ editingCustomerId=c.customer_id; $('#dlg-cust-name').value=c.name||''; $('#dlg-cust-email').value=c.email||''; $('#dlg-cust-seg').value=c.segment||''; $('#dlg-cust').showModal(); }
+  $('#dlg-cust-cancel').onclick = ()=> $('#dlg-cust').close();
+  $('#dlg-cust-save').onclick = async()=>{
+    try{
+      const payload={};
+      const name=$('#dlg-cust-name').value.trim(); const email=$('#dlg-cust-email').value.trim(); const seg=$('#dlg-cust-seg').value.trim();
+      if(name) payload.name=name; if(email || email==='') payload.email=email; if(seg || seg==='') payload.segment=seg;
+      await API.put('/customers/'+editingCustomerId, payload); toast('保存成功'); $('#dlg-cust').close(); loadCustomers();
+    }catch(e){ toast('保存失败：'+e.message) }
+  };
+
+  // ======== Products ========
+  let prodPage=1; const prodSize=20; let editingProductId=null; let prodCache=[];
+  async function loadProducts(){
+    try{
+      const r = await API.get(`/products/?page=${prodPage}&page_size=${prodSize}`);
+      $('#prod-page').textContent=String(prodPage);
+      prodCache = r.data;
+      const tb=$('#prod-table tbody'); tb.innerHTML='';
+      r.data.forEach(p=>{
+        tb.appendChild(el('tr',{},
+          el('td',{},p.product_id),
+          el('td',{},p.product_name),
+          el('td',{},p.category||''),
+          el('td',{},fmtCents(p.price_cents)),
+          el('td',{},fmtCents(p.cost_cents)),
+          el('td',{}, el('div',{class:'inline'},
+            el('button',{onclick:()=>openProdEdit(p)},'编辑'),
+            el('button',{class:'danger',onclick:()=>delProduct(p.product_id)},'删除')
+          ))
+        ))
+      })
+    }catch(e){ toast('加载商品失败：'+e.message) }
+  }
+  $('#prod-prev').onclick = ()=>{ if(prodPage>1){ prodPage--; loadProducts() } };
+  $('#prod-next').onclick = ()=>{ prodPage++; loadProducts() };
+  $('#prod-create').onclick = async()=>{
+    const name=$('#prod-name').value.trim(); const category=$('#prod-cat').value.trim(); const price=parseFloat($('#prod-price').value||'0'); const cost=parseFloat($('#prod-cost').value||'0');
+    if(!name || price<=0){ toast('请填写名称与有效价格'); return }
+    try{ await API.post('/products/', {product_name:name, category, price_cents: Math.round(price*100), cost_cents: Math.round(cost*100)}); toast('已创建'); loadProducts(); }catch(e){ toast('创建失败：'+e.message) }
+  };
+  async function delProduct(id){ if(!confirm('确认删除商品 '+id+' ?')) return; try{ await API.del('/products/'+id); toast('已删除'); loadProducts() }catch(e){ toast('删除失败：'+e.message) } }
+
+  function openProdEdit(p){ editingProductId=p.product_id; $('#dlg-prod-name').value=p.product_name; $('#dlg-prod-cat').value=p.category||''; $('#dlg-prod-price').value=(p.price_cents/100).toFixed(2); $('#dlg-prod-cost').value=(p.cost_cents/100).toFixed(2); $('#dlg-prod').showModal(); }
+  $('#dlg-prod-cancel').onclick = ()=> $('#dlg-prod').close();
+  $('#dlg-prod-save').onclick = async()=>{
+    try{
+      const name=$('#dlg-prod-name').value.trim(); const cat=$('#dlg-prod-cat').value.trim(); const price=$('#dlg-prod-price').value; const cost=$('#dlg-prod-cost').value;
+      const payload={}; if(name) payload.product_name=name; if(cat||cat==='') payload.category=cat; if(price) payload.price_cents=Math.round(parseFloat(price)*100); if(cost) payload.cost_cents=Math.round(parseFloat(cost)*100);
+      await API.put('/products/'+editingProductId, payload); toast('保存成功'); $('#dlg-prod').close(); loadProducts();
+    }catch(e){ toast('保存失败：'+e.message) }
+  };
+
+  // ======== Orders ========
+  let ordPage=1; const ordSize=20; let customersCache=[];
+  async function loadOrders(){
+    const qs = [];
+    const status=$('#ord-status').value; const cust=$('#ord-customer').value.trim(); const from=$('#ord-from').value; const to=$('#ord-to').value;
+    if(status) qs.push('status='+encodeURIComponent(status));
+    if(cust) qs.push('customer_id='+encodeURIComponent(cust));
+    if(from) qs.push('from='+from);
+    if(to) qs.push('to='+to);
+    qs.push('page='+ordPage,'page_size='+ordSize);
+    try{
+      const r = await API.get('/orders/?'+qs.join('&'));
+      $('#ord-page').textContent=String(ordPage);
+      const tb=$('#ord-table tbody'); tb.innerHTML='';
+      r.data.forEach(o=>{
+        tb.appendChild(el('tr',{},
+          el('td',{},o.order_id),
+          el('td',{},o.customer_id),
+          el('td',{},o.order_ts.replace('T',' ').slice(0,19)),
+          el('td',{}, el('span',{class:'status-'+o.status},o.status)),
+          el('td',{},fmtCents(o.items_total_cents)),
+          el('td',{},fmtCents(o.paid_total_cents)),
+          el('td',{},fmtCents(o.outstanding_cents)),
+          el('td',{}, el('div',{class:'inline'},
+            el('button',{onclick:()=>showOrder(o.order_id)},'查看')
+          ))
+        ))
+      })
+    }catch(e){ toast('加载订单失败：'+e.message) }
+  }
+  $('#ord-prev').onclick = ()=>{ if(ordPage>1){ ordPage--; loadOrders() } };
+  $('#ord-next').onclick = ()=>{ ordPage++; loadOrders() };
+  $('#ord-filter').onclick = ()=>{ ordPage=1; loadOrders() };
+
+  async function showOrder(id){
+    try{
+      const o = await API.get('/orders/'+id);
+      const box = $('#ord-detail'); box.innerHTML='';
+      const head = el('div',{class:'stack'},
+        el('div',{},'订单ID：', el('span',{class:'code'},o.order_id)),
+        el('div',{},'客户ID：', o.customer_id, '　状态：', el('span',{class:'status-'+o.status},o.status)),
+        el('div',{},'下单时间：', o.order_ts.replace('T',' ').slice(0,19)),
+        el('div',{},'明细合计：', fmtCents(o.items_total_cents),'　已付：', fmtCents(o.paid_total_cents),'　未付：', fmtCents(o.outstanding_cents))
+      );
+      const items = el('div',{}, el('strong',{},'明细'),
+        el('div',{}, el('table',{class:'table'}, el('thead',{}, el('tr',{}, el('th',{},'商品'), el('th',{},'数量'), el('th',{},'成交价'))),
+          el('tbody',{}, ...o.items.map(it=> el('tr',{}, el('td',{}, it.product_id), el('td',{}, it.qty), el('td',{}, fmtCents(it.price_cents_at_sale)) )))
+        ))
+      );
+      const pays = el('div',{}, el('strong',{},'付款'),
+        el('div',{}, el('table',{class:'table'}, el('thead',{}, el('tr',{}, el('th',{},'ID'), el('th',{},'时间'), el('th',{},'方式'), el('th',{},'金额'))),
+          el('tbody',{}, ...o.payments.map(p=> el('tr',{}, el('td',{}, p.payment_id), el('td',{}, p.paid_ts.replace('T',' ').slice(0,19)), el('td',{}, p.method||''), el('td',{}, fmtCents(p.paid_amount_cents)) )))
+        ),
+        el('div',{class:'row'}, el('input',{id:'pay-amount',placeholder:'金额（元）',class:'w-120'}), el('input',{id:'pay-method',placeholder:'方式，如 card',class:'w-120'}), el('button',{id:'btn-addpay',class:'primary'},'追加付款')))
+      );
+      const actions = el('div', {class:'row'},
+        el('button',{onclick:()=>updateOrderStatus(id,'paid'), class:'primary'}, '设为 paid'),
+        el('button',{onclick:()=>updateOrderStatus(id,'refunded'), class:'warn'}, '设为 refunded'),
+        el('button',{onclick:()=>updateOrderStatus(id,'cancelled'), class:'danger'}, '设为 cancelled')
+      );
+      box.append(head, items, pays, actions);
+      $('#btn-addpay').onclick = async()=>{
+        const amt = parseFloat($('#pay-amount').value||'0'); const method=$('#pay-method').value.trim();
+        if(!(amt>0)){ toast('请输入有效金额'); return }
+        try{ await API.post(`/orders/${id}/payments`, {paid_amount_cents: Math.round(amt*100), method}); toast('已追加付款'); showOrder(id); loadOrders(); }catch(e){ toast('追加失败：'+e.message) }
+      };
+    }catch(e){ toast('加载详情失败：'+e.message) }
+  }
+
+  async function updateOrderStatus(id, status){ try{ await API.put(`/orders/${id}/status`, {status}); toast('已更新状态'); showOrder(id); loadOrders(); }catch(e){ toast('更新失败：'+e.message) } }
+
+  // ---- 创建订单：动态明细/付款 ----
+  let productsCache=[];
+  $('#load-custs').onclick = async()=>{ try{ const r = await API.get('/customers/?page=1&page_size=100'); customersCache=r.data; const sel=$('#neword-customer-sel'); sel.innerHTML=''; r.data.forEach(c=> sel.append(el('option',{value:c.customer_id}, `${c.customer_id} - ${c.name}`))); toast('已载入客户'); }catch(e){ toast('载入客户失败：'+e.message) } };
+  $('#load-prods').onclick = async()=>{ try{ const r = await API.get('/products/?page=1&page_size=200'); productsCache=r.data; $$('#items-area select[data-role=prod]').forEach(fillProductSelect); toast('已载入商品'); }catch(e){ toast('载入商品失败：'+e.message) } };
+
+  function makeItemRow(){
+    const row = el('div',{class:'row'},
+      el('select',{'data-role':'prod', class:'w-120'}),
+      el('input',{'data-role':'qty', placeholder:'数量', class:'w-80'}),
+      el('input',{'data-role':'price', placeholder:'成交价（元，可空）', class:'w-120'}),
+      el('button',{class:'ghost',onclick:()=>{ row.remove(); updateNewOrderTotal(); }},'移除')
+    );
+    fillProductSelect(row.querySelector('select[data-role=prod]'));
+    row.querySelector('select').onchange = (e)=>{
+      const pid = Number(e.target.value||0);
+      const p = productsCache.find(x=>x.product_id===pid);
+      if(p){ row.querySelector('input[data-role=price]').value = (p.price_cents/100).toFixed(2) }
+      updateNewOrderTotal();
+    };
+    ['input[data-role=qty]','input[data-role=price]'].forEach(sel=> row.querySelector(sel).addEventListener('input', updateNewOrderTotal));
+    return row;
+  }
+  function fillProductSelect(sel){ sel.innerHTML=''; productsCache.forEach(p=> sel.append(el('option',{value:p.product_id}, `${p.product_id}-${p.product_name}`))); }
+  $('#add-item').onclick = ()=>{ $('#items-area').append(makeItemRow()); };
+
+  function makePayRow(){
+    const row = el('div',{class:'row'},
+      el('input',{'data-role':'amount', placeholder:'金额（元）', class:'w-120'}),
+      el('input',{'data-role':'method', placeholder:'方式（card/paypal/...）', class:'w-120'}),
+      el('button',{class:'ghost',onclick:()=>row.remove()},'移除')
+    );
+    row.querySelector('input[data-role=amount]').addEventListener('input', updateNewOrderTotal);
+    return row;
+  }
+  $('#add-pay').onclick = ()=>{ $('#pays-area').append(makePayRow()); };
+
+  function updateNewOrderTotal(){
+    // 汇总明细
+    let itemsTotal=0; $$('#items-area > .row').forEach(row=>{
+      const pid = Number(row.querySelector('select[data-role=prod]').value||0);
+      const qty = Number(row.querySelector('input[data-role=qty]').value||0);
+      const price = Number(parseFloat(row.querySelector('input[data-role=price]').value||'0')*100);
+      if(pid && qty>0 && price>0){ itemsTotal += qty*price }
+    });
+    let payTotal=0; $$('#pays-area > .row').forEach(row=>{
+      const amount = Number(parseFloat(row.querySelector('input[data-role=amount]').value||'0')*100);
+      if(amount>0) payTotal += amount;
+    });
+    $('#neword-total').textContent = `合计：${fmtCents(itemsTotal)}；首付：${fmtCents(payTotal)}；待付：${fmtCents(itemsTotal-payTotal)}`;
+  }
+
+  $('#create-order').onclick = async()=>{
+    const custId = Number($('#neword-customer').value|| $('#neword-customer-sel').value || 0);
+    if(!custId){ toast('请填写或选择客户ID'); return }
+    const items=[]; $$('#items-area > .row').forEach(r=>{
+      const product_id = Number(r.querySelector('select[data-role=prod]').value||0);
+      const qty = Number(r.querySelector('input[data-role=qty]').value||0);
+      const priceStr = r.querySelector('input[data-role=price]').value.trim();
+      const price = priceStr? Math.round(parseFloat(priceStr)*100) : null;
+      if(product_id && qty>0){ items.push({product_id, qty, ...(price?{price_cents_at_sale:price}:{})}) }
+    });
+    if(items.length===0){ toast('至少添加一条明细'); return }
+    const payments=[]; $$('#pays-area > .row').forEach(r=>{
+      const a = r.querySelector('input[data-role=amount]').value.trim(); const m = r.querySelector('input[data-role=method]').value.trim();
+      if(a){ payments.push({paid_amount_cents: Math.round(parseFloat(a)*100), method:m}) }
+    });
+    try{
+      const r = await API.post('/orders/', {customer_id: custId, items, payments});
+      toast('订单创建成功：#'+r.order_id); $('#items-area').innerHTML=''; $('#pays-area').innerHTML=''; $('#neword-total').textContent=''; loadOrders(); showOrder(r.order_id);
+    }catch(e){ toast('创建失败：'+e.message) }
+  };
+
+  // ======== Analytics ========
+  async function loadDailyGMV(){
+    const from=$('#ana-from').value; const to=$('#ana-to').value;
+    const qs = []; if(from) qs.push('from='+from); if(to) qs.push('to='+to);
+    try{
+      const r = await API.get('/analytics/daily-gmv'+(qs.length?('?'+qs.join('&')):''));
+      // table
+      const tb=$('#gmv-tbody'); tb.innerHTML='';
+      r.data.forEach(d=> tb.appendChild(el('tr',{}, el('td',{}, d.date), el('td',{}, fmtCents(d.gmv_cents)) )));
+      // simple chart in SVG
+      renderChart('#gmv-chart', r.data.map(x=>({x:x.date, y: cents(x.gmv_cents)/100})), 'GMV (元)');
+    }catch(e){ toast('加载 GMV 失败：'+e.message) }
+  }
+  $('#ana-load').onclick = loadDailyGMV;
+
+  function renderChart(selector, data, label){
+    const box = document.querySelector(selector); box.innerHTML='';
+    const w = box.clientWidth || 800, h = box.clientHeight || 220, pad=28;
+    const svgNS='http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(svgNS,'svg'); svg.setAttribute('viewBox',`0 0 ${w} ${h}`); svg.style.width='100%'; svg.style.height='100%';
+    const maxY = Math.max(1, ...data.map(d=>d.y));
+    // axes
+    const axis = document.createElementNS(svgNS,'g');
+    const x0 = document.createElementNS(svgNS,'line'); x0.setAttribute('x1',pad); x0.setAttribute('y1',h-pad); x0.setAttribute('x2',w-pad); x0.setAttribute('y2',h-pad); x0.setAttribute('stroke','#2a3a69'); svg.appendChild(x0);
+    const y0 = document.createElementNS(svgNS,'line'); y0.setAttribute('x1',pad); y0.setAttribute('y1',pad); y0.setAttribute('x2',pad); y0.setAttribute('y2',h-pad); y0.setAttribute('stroke','#2a3a69'); svg.appendChild(y0);
+    // path
+    const pts = data.map((d,i)=>{
+      const x = pad + (w-2*pad) * (i/(Math.max(1,data.length-1)));
+      const y = h-pad - (h-2*pad) * (d.y/maxY);
+      return [x,y];
+    });
+    const dPath = pts.map((p,i)=> (i? 'L':'M')+p[0]+","+p[1]).join(' ');
+    const path = document.createElementNS(svgNS,'path'); path.setAttribute('d', dPath); path.setAttribute('fill','none'); path.setAttribute('stroke','#6cc8ff'); path.setAttribute('stroke-width','2'); svg.appendChild(path);
+    // points
+    pts.forEach((p,i)=>{ const c=document.createElementNS(svgNS,'circle'); c.setAttribute('cx',p[0]); c.setAttribute('cy',p[1]); c.setAttribute('r','3'); c.setAttribute('fill','#a8c0ff'); svg.appendChild(c) });
+    // labels
+    const txt = document.createElementNS(svgNS,'text'); txt.setAttribute('x',pad); txt.setAttribute('y',16); txt.setAttribute('fill','#9ab'); txt.textContent = label; svg.appendChild(txt);
+    box.appendChild(svg);
+  }
+
+  // ======== 启动 ========
+  (function init(){
+    // 默认分析时间：最近 14 天
+    const d2 = new Date(); const d1 = new Date(Date.now()-13*86400000);
+    $('#ana-to').value = todayStr(d2); $('#ana-from').value = todayStr(d1);
+    loadCustomers(); loadProducts(); loadOrders(); loadDailyGMV();
+  })();
+  </script>
+</body>
+</html>
