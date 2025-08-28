@@ -413,7 +413,7 @@ func listProductsHandler(db *sql.DB) http.HandlerFunc {
 
 func createProductHandler(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		var in struct{ Name, Category string; PriceCents, CostCents int64 }
+		var in struct{ Name string `json:"product_name"`; Category string `json:"category"`; PriceCents int64 `json:"price_cents"`; CostCents int64 `json:"cost_cents"` }
 		if err := json.NewDecoder(r.Body).Decode(&in); err != nil { writeJSON(w, 400, map[string]string{"error":"invalid json"}); return }
 		if strings.TrimSpace(in.Name) == "" { writeJSON(w, 400, map[string]string{"error":"product_name required"}); return }
 		if in.PriceCents <= 0 || in.CostCents < 0 { writeJSON(w, 400, map[string]string{"error":"invalid price/cost"}); return }
@@ -445,7 +445,7 @@ func updateProductHandler(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		id, err := parseIDParam(r, "id")
 		if err != nil { writeJSON(w, 400, map[string]string{"error": err.Error()}); return }
-		var in struct{ Name *string; Category *string; PriceCents *int64; CostCents *int64 }
+		var in struct{ Name *string `json:"product_name"`; Category *string `json:"category"`; PriceCents *int64 `json:"price_cents"`; CostCents *int64 `json:"cost_cents"` }
 		if err := json.NewDecoder(r.Body).Decode(&in); err != nil { writeJSON(w, 400, map[string]string{"error":"invalid json"}); return }
 		set := []string{}; args := []any{}
 		if in.Name != nil { set = append(set, "product_name=?"); args = append(args, *in.Name) }
