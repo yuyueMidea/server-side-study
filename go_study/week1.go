@@ -2,13 +2,11 @@ package main
 
 import "fmt"
 
-func sumN(n int) int {
-	res := 0
-	for i := 0; i <= n; i += 1 {
-		res += i
-		fmt.Println("i: ", i)
-	}
-	return res
+// 命名返回值
+func calculate(a, b int) (sum, product int) {
+	sum = a + b
+	product = a * b
+	return // 自动返回命名的返回值
 }
 
 func ifElseJudge(score int) {
@@ -45,8 +43,7 @@ func main() {
 	var height float32 = 121.4
 	height += 2
 	const pi = 3.14
-	res1 := sumN(3)
-	fmt.Println("name: ", name, "msg: ", msg, ", rs1: ", res1, "height: ", height, ", pi : ", pi, "======\n=====")
+	fmt.Println("======== name: ", name, "msg: ", msg, "height: ", height, ", pi : ", pi, "========")
 
 	// 基本数据类型
 	var b bool = true
@@ -64,6 +61,9 @@ func main() {
 	fmt.Printf("布尔: %v, 整数: %v, 浮点: %v, 字符串: %v\n", b, i, f, s)
 	fmt.Printf("数组: %v, 切片: %v, 映射: %v\n", arr, slice, m)
 
+	fmt.Println("=======函数练习========")
+	sum, product := calculate(4, 5)
+	fmt.Printf("4和5的和: %d, 积: %d\n", sum, product)
 	// if-else 条件判断
 	ifElseJudge(98)
 	ifElseJudge(81)
@@ -78,7 +78,6 @@ func main() {
 	for i := 1; i <= 5; i++ {
 		fmt.Println("%d:", i)
 	}
-	fmt.Println("===============")
 
 	// 遍历切片
 	ulist := []string{"q1", "q2", "w3", "e4"}
@@ -86,4 +85,18 @@ func main() {
 		fmt.Println("idx: ", index, " val_: ", val)
 	}
 
+	fmt.Println("======= 结构体、方法和接口========")
+	// 定义结构体
+	type Person struct {
+		Name string
+		Age  int
+		City string
+	}
+	// 创建结构体实例
+	p1 := Person{
+		Name: "zhanfg",
+		Age:  33,
+		City: "guangzhou",
+	}
+	fmt.Printf("%s 现在%d 岁了\n", p1.Name, p1.Age)
 }
