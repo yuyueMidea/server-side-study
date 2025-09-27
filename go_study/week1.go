@@ -36,6 +36,27 @@ func caseSwitch(day int) {
 	}
 }
 
+// 定义结构体
+type Person struct {
+	Name string
+	Age  int
+	City string
+}
+
+// 为Person定义方法
+func (p Person) Introduce() {
+	fmt.Printf("我是%s，今年%d岁，来自%s\n", p.Name, p.Age, p.City)
+}
+
+// 构造函数模式
+func setNewPerson(name, city string, age int) *Person {
+	return &Person{
+		Name: name,
+		Age:  age,
+		City: city,
+	}
+}
+
 func main() {
 	// 变量声明的几种方式
 	var name string = "张三"
@@ -86,17 +107,15 @@ func main() {
 	}
 
 	fmt.Println("======= 结构体、方法和接口========")
-	// 定义结构体
-	type Person struct {
-		Name string
-		Age  int
-		City string
-	}
+
 	// 创建结构体实例
 	p1 := Person{
 		Name: "zhanfg",
 		Age:  33,
 		City: "guangzhou",
 	}
-	fmt.Printf("%s 现在%d 岁了\n", p1.Name, p1.Age)
+	p1.Introduce()
+	p2 := setNewPerson("lisi", "foshan", 44)
+	fmt.Printf("%s 现在%d 岁了\n=====%s 现在%d 岁了\n", p1.Name, p1.Age, p2.Name, p2.Age)
+
 }
