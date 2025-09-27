@@ -10,6 +10,34 @@ func sumN(n int) int {
 	}
 	return res
 }
+
+func ifElseJudge(score int) {
+	if score >= 90 {
+		fmt.Println("优秀", score)
+	} else if score >= 80 {
+		fmt.Println("良好", score)
+	} else if score >= 60 {
+		fmt.Println("及格", score)
+	} else {
+		fmt.Println("不及格", score)
+	}
+}
+
+func caseSwitch(day int) {
+	switch day {
+	case 1:
+		fmt.Println("星期1")
+	case 2:
+		fmt.Println("星期2")
+	case 3:
+		fmt.Println("星期3")
+	case 6:
+		fmt.Println("星期6")
+	default:
+		fmt.Println("其他")
+	}
+}
+
 func main() {
 	// 变量声明的几种方式
 	var name string = "张三"
@@ -35,5 +63,27 @@ func main() {
 
 	fmt.Printf("布尔: %v, 整数: %v, 浮点: %v, 字符串: %v\n", b, i, f, s)
 	fmt.Printf("数组: %v, 切片: %v, 映射: %v\n", arr, slice, m)
+
+	// if-else 条件判断
+	ifElseJudge(98)
+	ifElseJudge(81)
+	ifElseJudge(51)
+
+	// switch 语句
+	caseSwitch(1)
+	caseSwitch(3)
+
+	// for 循环
+	fmt.Println("数字1-5:")
+	for i := 1; i <= 5; i++ {
+		fmt.Println("%d:", i)
+	}
+	fmt.Println("===============")
+
+	// 遍历切片
+	ulist := []string{"q1", "q2", "w3", "e4"}
+	for index, val := range ulist {
+		fmt.Println("idx: ", index, " val_: ", val)
+	}
 
 }
