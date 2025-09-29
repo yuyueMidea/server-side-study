@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"strings"
+	"time"
 )
 
 // 1. 条件语句
@@ -66,6 +67,14 @@ func letterFrequency(text string) map[string]int {
 	return fre
 }
 
+// 1. goroutine基础
+func printNumber() {
+	for i := 1; i <= 5; i++ {
+		fmt.Println("i: ", i)
+		time.Sleep(time.Microsecond * 100)
+	}
+}
+
 func main() {
 	var name string = "zhangsna"
 	var age int = 98
@@ -83,5 +92,20 @@ func main() {
 	collectionDemo()
 	freq := letterFrequency("zhangsan")
 	fmt.Println("frequencys: ", freq)
-	fizzBuzz(17)
+	// fizzBuzz(17)
+	// 启动goroutine
+	go printNumber()
+	go printNumber()
+	time.Sleep(time.Microsecond * 1)
+	/**
+	实际执行流程：
+		主程序启动第一个goroutine
+		主程序立即启动第二个goroutine
+		主程序开始睡眠1秒
+		两个goroutine几乎同时开始执行
+		每个goroutine打印第一个数字1
+		主程序1秒后结束，强制终止所有goroutine
+		结果：只看到两个1
+	*/
+
 }
