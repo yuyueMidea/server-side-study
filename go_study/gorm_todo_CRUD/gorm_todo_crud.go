@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"net/http"
 	"strconv"
 	"strings"
 	"time"
@@ -214,6 +215,41 @@ func main() {
 		}
 		ctx.JSON(200, gin.H{"code": 200, "data": td})
 	})
+	// // 更新（部分字段）
+	r.PATCH("/todos/:id", func(ctx *gin.Context) {
+		id, err := strconv.ParseUint(ctx.Param("id"), 10, 64)
+		if err != nil {
+			jsonErr(ctx, 400, "invalid id")
+			return
+		}
+		var td Todo
+		err = db.First(&td, uint(id)).Error
+		if err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				jsonErr(ctx, 404, "not found")
+			}
+			jsonErr(ctx, 500, err.Error())
+			return
+		}
+		var req UpdateTodoReq
+		err = ctx.ShouldBindJSON(&req)
+		if err != nil {
+			jsonErr(ctx, 400, err.Error())
+			return
+		}
+		err = db.Model(&td).Updates(map[string]any{
+			"title":    req.Title,
+			"done":     req.Done,
+			"priority": req.Priority,
+			"duedate":  req.Duedate,
+			"notes":    req.Notes,
+		}).Error
+		if err != nil {
+			jsonErr(ctx, http.StatusInternalServerError, err.Error())
+			return
+		}
+		ctx.JSON(200, gin.H{"code": 200, "data": td})
+	})
 	// 创建
 	r.POST("/todos", func(ctx *gin.Context) {
 		var req CreateTodoReq
@@ -222,7 +258,6 @@ func main() {
 			jsonErr(ctx, 400, err.Error())
 			return
 		}
-		fmt.Println("reqqq: ", req)
 		// 解析 DueDate（可传 null 或 "" 来不设置）
 		due, err := parseRFC3339Ptr(req.Duedate)
 		if err != nil {
@@ -242,6 +277,24 @@ func main() {
 			return
 		}
 		ctx.JSON(201, gin.H{"code": 200, "data": td})
+	})
+	//deleteOne
+	r.DELETE("/todos/:id", func(ctx *gin.Context) {
+		id, err := strconv.ParseUint(ctx.Param("id"), 10, 64)
+		if err != nil {
+			jsonErr(ctx, 400, "invalid id")
+			return
+		}
+		res := db.Delete(&Todo{}, uint(id))
+		if res.Error != nil {
+			jsonErr(ctx, 500, res.Error.Error())
+			return
+		}
+		if res.RowsAffected == 0 {
+			jsonErr(ctx, 404, "not found")
+			return
+		}
+		ctx.JSON(200, gin.H{"code": 200, "msg": "delete success"})
 	})
 
 	runErr := r.Run(":8080")
