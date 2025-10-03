@@ -10,7 +10,7 @@
             --bg: #fefefe;
             --panel: #fefefe;
             --muted: #8aa0bf;
-            --border: #24324b;
+            --border: #c9cfda;
             --accent: #4f8cff;
             --danger: #ff5c5c;
         }
@@ -80,7 +80,7 @@
         }
 
         #tbody tr:hover {
-            background: #e4e4e6
+            background: #f6f6fb
         }
 
         th,
@@ -239,7 +239,7 @@
                         <option value="createdAt">创建 旧→新</option>
                     </select>
                     <div class="actions">
-                        <button id="refreshBtn">刷新</button>
+                        <button id="refreshBtn" class="primary">刷新</button>
                         <button id="addBtn" class="primary">新增</button>
                     </div>
                 </div>
@@ -260,9 +260,9 @@
                 <tbody id="tbody"></tbody>
             </table>
             <div class="pager" id="pager">
-                <button id="pgPrev">« 上一页</button>
+                <button id="pgPrev" class="primary">« 上一页</button>
                 <span class="muted" id="pgInfo">第 1 / 1 页 · 共 0 条</span>
-                <button id="pgNext">下一页 »</button>
+                <button id="pgNext" class="primary">下一页 »</button>
                 <select id="pgSize" title="每页条数">
                     <option>5</option>
                     <option selected>10</option>
@@ -464,7 +464,7 @@
           <td>${fmtDue(it.Duedate)}</td>
           <td title=${it.Notes}>${esc(it.Notes)}</td>
           <td class='nowrap'>
-            <button data-a='edit' data-id='${it.ID}'>编辑</button>
+            <button class='primary' data-a='edit' data-id='${it.ID}'>编辑</button>
             <button class='danger' data-a='del' data-id='${it.ID}'>删除</button>
           </td>`;
                 tr.addEventListener('dblclick', () => toggleDone(it));
