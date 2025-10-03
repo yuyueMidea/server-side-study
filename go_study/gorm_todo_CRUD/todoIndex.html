@@ -25,24 +25,6 @@
             background: var(--bg);
             /* color: #e6eefb */
         }
-
-        /* 顶部条 */
-        header {
-            position: sticky;
-            top: 0;
-            z-index: 2;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 10px 14px;
-            border-bottom: 1px solid var(--border);
-            background: linear-gradient(180deg, #6f7a95, #45484f)
-        }
-
-        .brand {
-            font-weight: 700
-        }
-
         .actions {
             display: flex;
             gap: 8px
@@ -52,7 +34,7 @@
             border: 1px solid var(--border);
             background: #2a3a5e;
             color: #e6eefb;
-            padding: 2px 4px;
+            padding: 2px 6px;
             border-radius: 10px;
             cursor: pointer
         }
@@ -87,9 +69,18 @@
             border-bottom: 1px solid var(--border)
         }
 
+        .toolbar .filter_bar {
+            display: flex;
+            gap: 10px;
+        }
+
         table {
             width: 100%;
             border-collapse: collapse
+        }
+
+        #tbody tr:hover {
+            background: #e4e4e6
         }
 
         th,
@@ -106,9 +97,6 @@
         th {
             color: var(--muted);
             background: #efefef;
-            position: sticky;
-            top: 48px;
-            z-index: 1
         }
 
         .badge {
@@ -163,9 +151,9 @@
             color: #cfe0ff
         }
 
-        input,
-        select,
-        textarea {
+        #todoDialog input,
+        #todoDialog select,
+        #todoDialog textarea {
             width: 100%;
             background: #e6eefb;
             /* color: #e6eefb; */
@@ -230,18 +218,31 @@
 </head>
 
 <body>
-    <header>
-        <div class="brand">TODO 管理台</div>
-        <div class="actions">
-            <button id="addBtn" class="primary">新增</button>
-            <button id="refreshBtn">刷新</button>
-        </div>
-    </header>
-
     <main>
         <div class="panel">
             <div class="toolbar">
                 <strong>任务列表</strong>
+                <div class="filter_bar" id="filters">
+                    <input id="filterTitle" placeholder="标题关键词" />
+                    <input id="filterNotes" placeholder="备注关键词" />
+                    <select id="filterDone" title="完成状态">
+                        <option value="">全部</option>
+                        <option value="false">未完成</option>
+                        <option value="true">已完成</option>
+                    </select>
+                    <select id="filterSort" title="排序">
+                        <option value="-id">最新</option>
+                        <option value="id">最早</option>
+                        <option value="-priority">优先级 高→低</option>
+                        <option value="priority">优先级 低→高</option>
+                        <option value="-createdAt">创建 新→旧</option>
+                        <option value="createdAt">创建 旧→新</option>
+                    </select>
+                    <div class="actions">
+                        <button id="refreshBtn">刷新</button>
+                        <button id="addBtn" class="primary">新增</button>
+                    </div>
+                </div>
                 <div class="nowrap" style="color:var(--muted);font-size:12px">双击行可切换完成状态</div>
             </div>
             <table>
@@ -337,7 +338,52 @@
                 });
         }
         // 分页状态
-        const state = { page: 1, pageSize: 10, total: 0 };
+        const state = {
+            page: 1,
+            pageSize: 10,
+            total: 0,
+            title: '',
+            notes: '',
+            done: '',     // '', 'true', 'false'
+            sort: '-id',
+        };
+        // URL <-> state 同步（可分享链接、刷新不丢）
+        function stateFromURL() {
+            const qs = new URLSearchParams(location.search);
+            state.page = Number(qs.get('page') || state.page) || 1;
+            state.pageSize = Number(qs.get('pageSize') || state.pageSize) || 10;
+            state.title = qs.get('title') ?? '';
+            state.notes = qs.get('notes') ?? '';
+            state.done = qs.get('done') ?? '';
+            state.sort = qs.get('sort') || state.sort;
+        }
+        function syncUIFromState() {
+            document.getElementById('filterTitle').value = state.title;
+            document.getElementById('filterNotes').value = state.notes;
+            document.getElementById('filterDone').value = state.done;
+            document.getElementById('filterSort').value = state.sort;
+        }
+        function syncURLFromState() {
+            const qs = new URLSearchParams();
+            qs.set('page', state.page);
+            qs.set('pageSize', state.pageSize);
+            if (state.title) qs.set('title', state.title);
+            if (state.notes) qs.set('notes', state.notes);
+            if (state.done) qs.set('done', state.done);
+            if (state.sort) qs.set('sort', state.sort);
+            history.replaceState(null, '', `?${qs.toString()}`);
+        }
+        // 统一的查询字符串构建器
+        function buildQuery() {
+            const qs = new URLSearchParams();
+            qs.set('page', state.page);
+            qs.set('pageSize', state.pageSize);
+            if (state.title) qs.set('title', state.title);
+            if (state.notes) qs.set('notes', state.notes);
+            if (state.done) qs.set('done', state.done);
+            if (state.sort) qs.set('sort', state.sort);
+            return qs.toString();
+        }
 
         function renderPager() {
             const pages = Math.max(1, Math.ceil(state.total / state.pageSize));
@@ -353,7 +399,25 @@
             state.page = Math.min(Math.max(1, p), pages);
             await loadList();
         }
+        // 事件绑定（过滤变更 → 回到第 1 页 → 发起查询）
+        const debounce = (fn, ms = 300) => { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); } };
 
+        document.getElementById('filterTitle').addEventListener('input', debounce(() => {
+            state.title = document.getElementById('filterTitle').value.trim();
+            state.page = 1; loadList();
+        }));
+        document.getElementById('filterNotes').addEventListener('input', debounce(() => {
+            state.notes = document.getElementById('filterNotes').value.trim();
+            state.page = 1; loadList();
+        }));
+        document.getElementById('filterDone').addEventListener('change', () => {
+            state.done = document.getElementById('filterDone').value;
+            state.page = 1; loadList();
+        });
+        document.getElementById('filterSort').addEventListener('change', () => {
+            state.sort = document.getElementById('filterSort').value;
+            state.page = 1; loadList();
+        });
         // 事件绑定（放在现有“事件绑定”附近也可）
         document.getElementById('pgPrev').addEventListener('click', () => gotoPage(state.page - 1));
         document.getElementById('pgNext').addEventListener('click', () => gotoPage(state.page + 1));
@@ -363,7 +427,6 @@
             loadList();
         });
 
-
         function fmtDue(s) { if (!s) return ''; const d = new Date(s); if (isNaN(d.getTime())) return ''; return d.toLocaleString(); }
         function toLocalInput(iso) { if (!iso) return ''; const d = new Date(iso); if (isNaN(d)) return ''; const p = n => String(n).padStart(2, '0'); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`; }
         function localToISO(s) { if (!s) return null; const d = new Date(s); if (isNaN(d)) return null; return d.toISOString(); }
@@ -371,13 +434,13 @@
 
         async function loadList() {
             try {
-                const data = await api(`/todos?page=${state.page}&pageSize=${state.pageSize}`);
+                syncURLFromState();
+                const data = await api(`/todos?${buildQuery()}`);
                 const items = data.data || data || [];
-
-                state.total = Number(data.total ?? items.length);
+                // 同步后端分页结果（若未返回则维持原值）
+                state.total = Number(data.total ?? state.total ?? items.length);
                 state.page = Number(data.page ?? state.page);
                 state.pageSize = Number(data.pageSize ?? state.pageSize);
-
                 renderRows(items);
                 renderPager();
 
@@ -483,7 +546,9 @@
             if (a === 'del') removeItem(id);
         });
 
-        // 首屏加载
+        // 初始化：从 URL 恢复 → 同步到 UI → 首次加载
+        stateFromURL();
+        syncUIFromState();
         loadList();
     </script>
 </body>
