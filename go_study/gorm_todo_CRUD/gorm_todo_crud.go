@@ -142,8 +142,8 @@ func main() {
 		if page <= 0 {
 			page = 1
 		}
-		if pageSize < 0 || pageSize > 100 {
-			pageSize = 1
+		if pageSize <= 0 || pageSize > 100 {
+			pageSize = 10
 		}
 		offset = (page - 1) * pageSize
 		if doneParam != "" {
@@ -175,7 +175,7 @@ func main() {
 		tx := db.Model(&Todo{})
 		if q != "" {
 			like := "%" + q + "%"
-			tx = tx.Where("title LIKE ? OR notes LKIE ?", like, like)
+			tx = tx.Where("title LIKE ? OR notes LIKE ?", like, like)
 		}
 		if doneFilter != nil {
 			tx = tx.Where("done = ?", *doneFilter)
