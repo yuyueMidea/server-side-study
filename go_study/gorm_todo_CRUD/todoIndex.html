@@ -75,7 +75,7 @@
 
         main {
             max-width: 100vw;
-            margin: 16px auto;
+            margin: 0 auto;
             padding: 14px
         }
 
@@ -96,7 +96,11 @@
         td {
             padding: 3px 6px;
             border-bottom: 1px solid var(--border);
-            text-align: left
+            text-align: left;
+            max-width: 600px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis
         }
 
         th {
@@ -181,7 +185,7 @@
         #toast {
             position: fixed;
             left: 50%;
-            bottom: 18px;
+            bottom: 50%;
             transform: translateX(-50%);
             padding: 10px 14px;
             border-radius: 12px;
@@ -302,8 +306,7 @@
 
         async function loadList() {
             try {
-                const data = await api('/todos');
-                console.log("dataaaa: ", data )
+                const data = await api('/todos?pageSize=20');
                 const items = data.data || data || [];
                 renderRows(items);
             } catch (e) { toast('加载失败：' + e.message, true); }
@@ -324,7 +327,7 @@
           <td>${it.Priority ?? ''}</td>
           <td>${badge}</td>
           <td>${fmtDue(it.Duedate)}</td>
-          <td>${esc(it.Notes)}</td>
+          <td title=${it.Notes}>${esc(it.Notes)}</td>
           <td class='nowrap'>
             <button data-a='edit' data-id='${it.ID}'>编辑</button>
             <button class='danger' data-a='del' data-id='${it.ID}'>删除</button>
@@ -377,7 +380,6 @@
                 Duedate: localToISO($('#fDue').value), // null 代表不设置/清空
                 Notes: $('#fNotes').value.trim(),
             };
-            console.log("bodyyyy: ", body )
             if (!body.Title) { toast('标题必填', true); return; }
             try {
                 if (id) {
