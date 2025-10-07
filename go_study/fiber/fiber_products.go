@@ -26,16 +26,9 @@ type Product struct {
 func main() {
 	app := fiber.New()
 	app.Get("/", func(c *fiber.Ctx) error {
-		return c.SendString("hello, yy3, this is fiber example!")
+		return c.SendString("hello, yy3, this is a products list!")
 	})
-	// 2) 路由与参数（Path、Query、Body）
-	app.Get("/hello/:name", func(c *fiber.Ctx) error {
-		n := c.Params("name")
-		fmt.Println("=== go fiber database example ===", n)
-		return c.JSON(fiber.Map{
-			"my name is ": n,
-		})
-	})
+
 	// 初始化数据库
 	db, err := gorm.Open(sqlite.Open("products.db"), &gorm.Config{})
 	if err != nil {
@@ -65,7 +58,7 @@ func main() {
 			"data":  products,
 		})
 	})
-	app.Get("/products/:category", func(c *fiber.Ctx) error {
+	app.Get("/products/category/:category", func(c *fiber.Ctx) error {
 		// 按分类获取产品
 		var products []Product
 		category := c.Params("category")
@@ -76,7 +69,7 @@ func main() {
 		})
 	})
 	// 获取单个产品
-	app.Get("/products/:id", func(c *fiber.Ctx) error {
+	app.Get("/products/id/:id", func(c *fiber.Ctx) error {
 		var product Product
 		id := c.Params("id")
 		fmt.Println("====product_id: ", id)
@@ -89,6 +82,25 @@ func main() {
 		return c.JSON(fiber.Map{
 			"success": true,
 			"data":    product,
+		})
+	})
+	// 搜索产品（按名称）
+	app.Get("/products/search/:name", func(c *fiber.Ctx) error {
+		keyword := c.Params("name")
+		fmt.Println("=== kk:", keyword)
+		if keyword == "" {
+			return c.JSON(fiber.Map{
+				"success": false,
+				"error":   "Search keyword required",
+			})
+		}
+		var products []Product
+		db.Where("name LIKE ?", "%"+keyword+"%").Find(&products)
+		return c.JSON(fiber.Map{
+			"success": true,
+			"keyword": keyword,
+			"count":   len(products),
+			"data":    products,
 		})
 	})
 	log.Fatal(app.Listen(":8080"))
