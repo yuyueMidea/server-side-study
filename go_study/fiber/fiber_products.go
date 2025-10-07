@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"strconv"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -48,9 +49,36 @@ func main() {
 		query := db.Model(&Product{})
 		// 计算总数
 		var total int64
+		var products []Product
 		query.Count(&total)
+		// 解析查询参数
+		pagesizestr := c.Query("page_size", "10")
+		pagesize, err := strconv.Atoi(pagesizestr)
+		if err != nil || pagesize < 1 {
+			pagesize = 10
+		}
+		fmt.Println("pagesizeee: ", pagesize)
+
+		query.Limit(pagesize).Find(&products)
 		return c.JSON(fiber.Map{
 			"total": total,
+			"data":  products,
+		})
+	})
+	// 获取单个产品
+	app.Get("/products/:id", func(c *fiber.Ctx) error {
+		var product Product
+		id := c.Params("id")
+		fmt.Println("====product_id: ", id)
+		err := db.First(&product, id).Error
+		if err != nil {
+			return c.JSON(fiber.Map{
+				"error": "product not found",
+			})
+		}
+		return c.JSON(fiber.Map{
+			"success": true,
+			"data":    product,
 		})
 	})
 	log.Fatal(app.Listen(":8080"))
