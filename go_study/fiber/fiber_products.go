@@ -65,6 +65,16 @@ func main() {
 			"data":  products,
 		})
 	})
+	app.Get("/products/:category", func(c *fiber.Ctx) error {
+		// 按分类获取产品
+		var products []Product
+		category := c.Params("category")
+		db.Where("category = ?", category).Find(&products)
+		return c.JSON(fiber.Map{
+			"count": len(products),
+			"data":  products,
+		})
+	})
 	// 获取单个产品
 	app.Get("/products/:id", func(c *fiber.Ctx) error {
 		var product Product
