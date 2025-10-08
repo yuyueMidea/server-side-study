@@ -10,3 +10,9 @@ gin basic routine
 - c.Abort()：停止执行后续中间件和处理函数
 - c.Set() / c.Get()：在请求上下文中存储和读取数据
 - 路由分组：使用花括号 {} 只是为了代码可读性，不是必须的
+
+GORM 关键概念：
+- 模型定义：使用 gorm 标签定义字段属性
+- CRUD 操作：Create(): 创建； First(), Find(): 查询； Updates(): 更新； Delete(): 删除
+- 软删除：添加 DeletedAt 字段自动启用
+- 链式查询：db.Where().Order().Limit()
