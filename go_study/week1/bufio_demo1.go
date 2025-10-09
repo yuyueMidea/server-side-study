@@ -44,3 +44,5 @@ func main() {
 	}
 	fmt.Printf("lines=%d words=%d bytes=%d\n", l, w, b)
 }
+
+//测试命令：go run bufio_demo1.go -f hello.txt
