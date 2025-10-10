@@ -22,3 +22,20 @@
 - 健康检查端点
 - Docker 部署支持
 - 完整的测试脚本
+
+**🚀 快速使用步骤**
+```
+# 1. 初始化项目
+go mod init go-user-service
+
+# 2. 安装依赖
+go get github.com/gin-gonic/gin
+go get github.com/supabase-community/supabase-go
+go get github.com/gin-contrib/cors
+go get github.com/joho/godotenv
+
+# 3. 在 Supabase 创建 users 表（SQL 已提供）
+
+# 4. 运行服务
+go run main.go
+```
