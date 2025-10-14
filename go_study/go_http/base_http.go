@@ -144,3 +144,10 @@ func main() {
 	fmt.Println("DELETE /todos/:id  - Delete todo")
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }
+
+//测试脚本：
+//curl -i -X POST http://localhost:8080/todos -H "Content-Type: application/json" -d "{\"title\":\"learn Go web\",\"complete\":false}"
+//curl -i -X DELETE http://localhost:8080/todos/2
+//curl -i http://localhost:8080/todos/1
+//curl -i http://localhost:8080/todos
+
