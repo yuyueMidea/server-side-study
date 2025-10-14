@@ -13,6 +13,48 @@ go的核心特点：
 | 语法简洁  | 类似 C，但没有头文件和类                                |
 | 内置工具链 | 格式化（`gofmt`）、构建（`go build`）、测试（`go test`）都自带 |
 
+**Go语言后端开发完整指南**
+
+一、Go语言在后端的应用领域
+
+1. Web服务与API开发
+- RESTful API服务
+- GraphQL服务
+- gRPC微服务
+- WebSocket实时通信
+- 服务端渲染(SSR)
+
+3. 微服务架构
+- 服务注册与发现
+- 负载均衡
+- 服务网格(Service Mesh)
+- 分布式追踪
+- 熔断降级
+
+4. 云原生应用
+- 容器化应用(Docker)
+- Kubernetes控制器
+- Serverless函数
+- 云服务SDK集成
+
+5. 中间件开发
+- 消息队列(Kafka、RabbitMQ客户端)
+- 缓存系统(Redis、Memcached)
+- 数据库代理
+- API网关
+
+6. DevOps工具
+- CI/CD工具(如Drone)
+- 监控系统(Prometheus)
+- 日志收集(Logstash替代品)
+- 基础设施即代码工具(Terraform)
+
+7. 数据处理
+- ETL数据管道
+- 实时数据流处理
+- 大数据处理工具
+- 爬虫系统
+
 ## Go 项目实战学习路线图
 - 第一阶段：Go 基础语法 + 标准库打牢
 - 第二阶段：Web 开发 + HTTP 服务基础
