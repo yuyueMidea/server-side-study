@@ -1,21 +1,4 @@
-/*
- Navicat Premium Dump SQL
-
- Source Server         : postgres
- Source Server Type    : PostgreSQL
- Source Server Version : 170006 (170006)
- Source Host           : localhost:5432
- Source Catalog        : web3
- Source Schema         : public
-
- Target Server Type    : PostgreSQL
- Target Server Version : 170006 (170006)
- File Encoding         : 65001
-
- Date: 13/10/2025 19:59:51
-*/
-
-
+```
 -- ----------------------------
 -- Table structure for chain
 -- ----------------------------
@@ -144,6 +127,7 @@ CREATE UNIQUE INDEX "uk" ON "public"."users" USING btree (
 -- Primary Key structure for table users
 -- ----------------------------
 ALTER TABLE "public"."users" ADD CONSTRAINT "user_pkey" PRIMARY KEY ("id");
+```
 
 ## 核心数据模型与业务含义
 1) chain：区块链维度的监听进度与合约地址
