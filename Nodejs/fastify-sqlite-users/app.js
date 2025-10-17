@@ -8,6 +8,23 @@ const DB_FILE = path.resolve('data.db');
 const app = Fastify({ logger: true });
 await app.register(sensible);
 
+import fastifyStatic from '@fastify/static';
+import cors from '@fastify/cors';
+import { fileURLToPath } from 'node:url';
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// CORS（如果用）
+await app.register(cors, { origin: true });
+
+// 静态托管（同源，无跨域）
+await app.register(fastifyStatic, {
+  root: path.join(__dirname),
+  prefix: '/',
+  index: ['index.html']
+});
+
+
 // ---- 加载 sql.js & 打开/创建数据库 ----
 const SQL = await initSqlJs({
     // 可省略 locateFile；默认从 node_modules/sql.js/dist/ 加载 wasm
