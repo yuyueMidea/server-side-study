@@ -1,0 +1,447 @@
+<!doctype html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>用户管理（Fastify + SQLite）</title>
+    <style>
+        :root {
+            --primary: #0d6efd;
+            --primary2: #0b5ed7;
+            --border: #e5e7eb;
+            --light: #f8fafc;
+            --muted: #6b7280;
+            --danger: #dc3545;
+            --success: #198754
+        }
+
+        * {
+            box-sizing: border-box
+        }
+
+        body {
+            font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+            background: #f6f7fb;
+            margin: 0;
+            color: #111
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 24px auto;
+            padding: 0 16px
+        }
+
+        h1 {
+            font-size: 22px;
+            margin: 0 0 12px
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 999px;
+            background: #eef2ff;
+            color: #3b5bdb;
+            font-size: 12px
+        }
+
+        .card {
+            background: #fff;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 16px;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, .04)
+        }
+
+        .row {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap
+        }
+
+        .col {
+            flex: 1 1 240px
+        }
+
+        .toolbar {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            flex-wrap: wrap;
+            margin-bottom: 12px
+        }
+
+        label {
+            display: block;
+            font-size: 13px;
+            color: #374151;
+            margin-bottom: 6px
+        }
+
+        input[type=text],
+        input[type=number],
+        input[type=email],
+        select {
+            width: 100%;
+            padding: 8px 10px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: #fff
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse
+        }
+
+        th,
+        td {
+            padding: 10px;
+            border-bottom: 1px solid var(--border);
+            text-align: left;
+            font-size: 14px;
+            vertical-align: top
+        }
+
+        th {
+            background: var(--light)
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            border: 1px solid transparent;
+            background: var(--primary);
+            color: #fff;
+            padding: 8px 14px;
+            border-radius: 8px;
+            cursor: pointer
+        }
+
+        .btn:hover {
+            background: var(--primary2)
+        }
+
+        .btn.secondary {
+            background: #fff;
+            color: #111;
+            border-color: var(--border)
+        }
+
+        .btn.gray {
+            background: #6c757d
+        }
+
+        .btn.success {
+            background: var(--success)
+        }
+
+        .btn.danger {
+            background: var(--danger)
+        }
+
+        .btn.sm {
+            padding: 6px 10px;
+            font-size: 12px
+        }
+
+        .muted {
+            color: var(--muted);
+            font-size: 12px
+        }
+
+        .pagination {
+            display: flex;
+            gap: 8px;
+            align-items: center
+        }
+
+        .hr {
+            height: 1px;
+            background: var(--border);
+            margin: 12px 0
+        }
+
+        .alert {
+            padding: 10px 12px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            background: #fff3cd;
+            color: #664d03;
+            font-size: 14px
+        }
+
+        .toast {
+            position: fixed;
+            right: 16px;
+            bottom: 16px;
+            background: #222;
+            color: #fff;
+            padding: 10px 14px;
+            border-radius: 10px;
+            opacity: 0;
+            transform: translateY(10px);
+            transition: all .25s;
+            z-index: 99
+        }
+
+        .toast.show {
+            opacity: 1;
+            transform: translateY(0)
+        }
+
+        .modal {
+            position: fixed;
+            inset: 0;
+            display: none;
+            background: rgba(0, 0, 0, .35);
+            align-items: center;
+            justify-content: center;
+            z-index: 90
+        }
+
+        .modal.show {
+            display: flex
+        }
+
+        .modal .panel {
+            width: min(520px, 90vw);
+            background: #fff;
+            border-radius: 12px;
+            padding: 16px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, .15)
+        }
+
+        code {
+            background: #f0f4ff;
+            padding: 2px 6px;
+            border-radius: 6px
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>用户管理（Fastify + SQLite） <span id="serverBadge" class="badge">服务器：未连接</span></h1>
+
+        <section class="card">
+            <div class="toolbar">
+                <input id="q" type="text" placeholder="搜索 名称/Email…" />
+                <select id="limit">
+                    <option value="10">每页 10</option>
+                    <option value="20" selected>每页 20</option>
+                    <option value="50">每页 50</option>
+                </select>
+                <label style="display:inline-flex;align-items:center;gap:6px">
+                    <input id="includeDeleted" type="checkbox" /> 包含已软删
+                </label>
+                <button class="btn secondary" id="refresh">刷新</button>
+                <div class="pagination" id="pager"></div>
+            </div>
+
+            <div class="row">
+                <div class="col">
+                    <div><strong>新增 / 编辑 用户</strong></div>
+                    <div class="hr"></div>
+                    <div class="row">
+                        <div class="col"><label>姓名 *</label><input id="name" /></div>
+                        <div class="col"><label>Email（唯一）*</label><input id="email" type="email" /></div>
+                    </div>
+                    <div class="row">
+                        <div class="col"><label>年龄</label><input id="age" type="number" min="0" max="150" /></div>
+                    </div>
+                    <div class="row" style="align-items:center;gap:8px">
+                        <button class="btn success" id="save">保存</button>
+                        <button class="btn gray" id="reset">重置</button>
+                        <span id="formHint" class="muted">创建模式</span>
+                    </div>
+                    <div class="hr"></div>
+                    <div class="alert">
+                        删除按钮默认执行 <strong>软删除</strong>；如需物理删除，请在“删除确认”里勾选“硬删除”。<br />
+                        后端接口：<code>POST /users</code>，<code>GET /users</code>，<code>GET/PUT/PATCH/DELETE /users/:id</code>
+                    </div>
+                </div>
+
+                <div class="col" style="flex:2 1 520px">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>姓名</th>
+                                <th>Email</th>
+                                <th>年龄</th>
+                                <th>状态</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="table"></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- 删除确认 -->
+    <div id="confirmModal" class="modal">
+        <div class="panel">
+            <div style="font-weight:600;margin-bottom:6px">确认删除</div>
+            <div id="confirmText" class="muted" style="margin-bottom:10px"></div>
+            <label style="display:inline-flex;align-items:center;gap:6px;margin-bottom:12px">
+                <input id="hardDelete" type="checkbox" /> 硬删除（物理删除，无法恢复）
+            </label>
+            <div style="display:flex;gap:8px;justify-content:flex-end">
+                <button id="confirmCancel" class="btn secondary sm">取消</button>
+                <button id="confirmOk" class="btn danger sm">删除</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast" class="toast"></div>
+
+    <script>
+        /* ===== 配置 ===== */
+        const BASE_URL = 'http://127.0.0.1:3000'; // 同源托管就用这个；跨域请在后端开启 CORS
+        const state = { limit: 20, offset: 0, q: '', includeDeleted: false, editingId: null };
+
+        /* ===== 工具 ===== */
+        function qs(s) { return document.querySelector(s) }
+        function toast(msg, ok = true) { const t = qs('#toast'); t.textContent = msg; t.style.background = ok ? '#222' : '#c0392b'; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 1800) }
+        async function api(path, opts = {}) {
+            const res = await fetch(BASE_URL + path, { headers: { 'Content-Type': 'application/json' }, ...opts });
+            const text = await res.text().catch(() => null);
+            const isJSON = text && (text.startsWith('{') || text.startsWith('['));
+            if (!res.ok) {
+                throw new Error(text ? text : res.status + ' ' + res.statusText);
+            }
+            return text ? (isJSON ? JSON.parse(text) : text) : null;
+        }
+        function pager(containerId, total, limit, offset, onGoto) {
+            const el = qs('#' + containerId); el.innerHTML = '';
+            const totalPages = Math.max(1, Math.ceil(total / limit));
+            const page = Math.floor(offset / limit) + 1;
+            const mk = (label, disabled, fn) => { const b = document.createElement('button'); b.className = 'btn secondary sm'; b.disabled = !!disabled; b.textContent = label; b.onclick = fn; return b; }
+            el.append(mk('«', page <= 1, _ => onGoto(0)));
+            el.append(mk('‹', page <= 1, _ => onGoto(Math.max(0, offset - limit))));
+            const info = document.createElement('span'); info.className = 'muted'; info.textContent = `第 ${page}/${totalPages} 页 · 共 ${total} 条`; el.append(info);
+            el.append(mk('›', page >= totalPages, _ => onGoto(offset + limit)));
+            el.append(mk('»', page >= totalPages, _ => onGoto((totalPages - 1) * limit)));
+        }
+        function openConfirm(text) {
+            return new Promise(resolve => {
+                qs('#confirmText').textContent = text;
+                qs('#hardDelete').checked = false;
+                const m = qs('#confirmModal'); m.classList.add('show');
+                const ok = () => { cleanup(); resolve({ ok: true, hard: qs('#hardDelete').checked }) }
+                const cancel = () => { cleanup(); resolve({ ok: false }) }
+                function cleanup() { m.classList.remove('show'); o.removeEventListener('click', ok); c.removeEventListener('click', cancel) }
+                const o = qs('#confirmOk'), c = qs('#confirmCancel'); o.addEventListener('click', ok); c.addEventListener('click', cancel);
+            })
+        }
+
+        /* ===== 数据交互 ===== */
+        async function loadList() {
+            const { limit, offset, q, includeDeleted } = state;
+            const p = new URLSearchParams();
+            p.set('limit', limit); p.set('offset', offset);
+            if (q) p.set('q', q);
+            if (includeDeleted) p.set('includeDeleted', 'true');
+            const data = await api('/users?' + p.toString());
+            const tb = qs('#table'); tb.innerHTML = '';
+            (data.items || []).forEach(r => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+      <td>${r.id}</td>
+      <td>${r.name || ''}</td>
+      <td><code>${r.email || ''}</code></td>
+      <td>${r.age ?? ''}</td>
+      <td>${r.deleted_at ? '<span class="muted">已软删</span>' : ''}</td>
+      <td class="actions">
+        <button class="btn sm" data-edit="${r.id}">编辑</button>
+        <button class="btn danger sm" data-del="${r.id}">删除</button>
+      </td>`;
+                tb.appendChild(tr);
+            });
+            pager('pager', data.total, limit, offset, newOffset => { state.offset = Math.max(0, newOffset); loadList(); });
+        }
+        function resetForm() { state.editingId = null; qs('#name').value = ''; qs('#email').value = ''; qs('#age').value = ''; qs('#formHint').textContent = '创建模式'; }
+
+        async function save() {
+            const body = {
+                name: qs('#name').value.trim(),
+                email: qs('#email').value.trim().toLowerCase(),
+                age: qs('#age').value ? Number(qs('#age').value) : null
+            };
+            if (!body.name || !body.email) { toast('姓名与 Email 必填', false); return; }
+            try {
+                if (state.editingId) {
+                    await api('/users/' + state.editingId, { method: 'PATCH', body: JSON.stringify(body) });
+                    toast('用户已更新');
+                } else {
+                    await api('/users', { method: 'POST', body: JSON.stringify(body) });
+                    toast('用户已创建');
+                }
+                resetForm(); state.offset = 0; await loadList();
+            } catch (e) {
+                // 尝试解析后端的错误对象
+                let msg = e.message;
+                try { const o = JSON.parse(msg); msg = o.message || msg; } catch (_) { }
+                toast(msg, false);
+            }
+        }
+
+        async function onRowClick(e) {
+            const id = e.target?.dataset?.edit || e.target?.dataset?.del;
+            if (!id) return;
+            if (e.target.dataset.edit) {
+                const row = await api('/users/' + id);
+                qs('#name').value = row.name || '';
+                qs('#email').value = row.email || '';
+                qs('#age').value = (row.age ?? '');
+                state.editingId = id;
+                qs('#formHint').textContent = `编辑模式（ID=${id}）`;
+            } else if (e.target.dataset.del) {
+                const { ok, hard } = await openConfirm(`确定删除用户 ID=${id} 吗？${hard ? '（物理删除）' : '（软删除，可恢复）'}`);
+                if (!ok) return;
+                try {
+                    await api(`/users/${id}${hard ? '?hard=true' : ''}`, { method: 'DELETE' });
+                    toast(hard ? '已物理删除' : '已软删除');
+                    await loadList();
+                } catch (err) {
+                    let msg = err.message;
+                    try { const o = JSON.parse(msg); msg = o.message || msg; } catch (_) { }
+                    toast(msg, false);
+                }
+            }
+        }
+
+        /* ===== 事件绑定 ===== */
+        qs('#refresh').onclick = () => { state.q = qs('#q').value.trim(); state.limit = +qs('#limit').value; state.includeDeleted = qs('#includeDeleted').checked; state.offset = 0; loadList(); }
+        qs('#limit').onchange = () => qs('#refresh').click();
+        qs('#includeDeleted').onchange = () => qs('#refresh').click();
+        qs('#table').addEventListener('click', onRowClick);
+        qs('#save').onclick = save;
+        qs('#reset').onclick = resetForm;
+        // 回车搜索
+        qs('#q').addEventListener('keydown', e => { if (e.key === 'Enter') { qs('#refresh').click(); } });
+
+        /* ===== 启动 ===== */
+        (async function boot() {
+            try {
+                await api('/health');
+                const b = qs('#serverBadge');
+                b.textContent = '服务器：已连接'; b.style.background = '#e7f5ff'; b.style.color = '#0b7285';
+            } catch (_) {
+                const b = qs('#serverBadge');
+                b.textContent = '服务器连接失败'; b.style.background = '#fdecec'; b.style.color = '#c92a2a';
+                toast('无法连接后端：请检查 BASE_URL 或启用 CORS', false);
+            }
+            await loadList();
+        })();
+    </script>
+</body>
+
+</html>
