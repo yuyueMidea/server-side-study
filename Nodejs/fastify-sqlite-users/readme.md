@@ -16,3 +16,48 @@
 | PUT    | `/users/:id` | 全量更新    | 覆盖 `name/email/age`                                            |
 | PATCH  | `/users/:id` | 局部更新    | 修改任意字段                                                         |
 | DELETE | `/users/:id` | 删除      | 默认软删；`?hard=true` 硬删/物理删除                                      |
+
+测试命令（curl）
+# 1) 健康检查
+curl -s http://127.0.0.1:3000/health
+
+# 2) 创建用户
+curl -i -X POST http://127.0.0.1:3000/users \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Alice","email":"alice@example.com","age":25}'
+
+# 3) 再创建一个用户
+curl -i -X POST http://127.0.0.1:3000/users \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Bob","email":"bob@example.com","age":30}'
+
+# 4) 列表查询（分页）
+curl -s "http://127.0.0.1:3000/users?limit=10&offset=0"
+
+# 5) 关键词搜索（按 name/email 模糊）
+curl -s "http://127.0.0.1:3000/users?q=ali"
+
+# 6) 按 ID 查询
+curl -s http://127.0.0.1:3000/users/1
+
+# 7) 全量更新（PUT）
+curl -s -X PUT http://127.0.0.1:3000/users/1 \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Alice Zhang","email":"alice@example.com","age":26}'
+
+# 8) 局部更新（PATCH）
+curl -s -X PATCH http://127.0.0.1:3000/users/2 \
+  -H "Content-Type: application/json" \
+  -d '{"age":31}'
+
+# 9) 软删除
+curl -i -X DELETE http://127.0.0.1:3000/users/2
+
+# 10) 软删后的查询（默认查不到）
+curl -i http://127.0.0.1:3000/users/2
+
+# 11) 查看包含软删的数据
+curl -s "http://127.0.0.1:3000/users?includeDeleted=true"
+
+# 12) 硬删除（物理删除）
+curl -i -X DELETE "http://127.0.0.1:3000/users/2?hard=true"
