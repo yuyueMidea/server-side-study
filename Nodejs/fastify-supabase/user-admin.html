@@ -1,0 +1,1165 @@
+<!doctype html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Users Admin · Fastify + Supabase</title>
+    <style>
+        /* === Bootstrap-like Light theme === */
+        :root {
+            --bg: #f8fafc;
+            --panel: #ffffff;
+            --panel-2: #f9fafb;
+            --text: #0f172a;
+            --muted: #64748b;
+            --primary: #0d6efd;
+            --primary-600: #0b5ed7;
+            --danger: #dc3545;
+            --danger-600: #bb2d3b;
+            --success: #198754;
+            --warning: #ffc107;
+            --border: #e2e8f0;
+            --input: #ffffff;
+            --shadow: 0 8px 24px rgba(15, 23, 42, .06), 0 1px 2px rgba(15, 23, 42, .06);
+            --shadow-sm: 0 1px 2px rgba(15, 23, 42, .08);
+            --shadow-lg: 0 16px 32px rgba(15, 23, 42, .08);
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        html,
+        body {
+            height: 100%;
+            margin: 0;
+        }
+
+        body {
+            background: linear-gradient(180deg, var(--bg), #ffffff 60%);
+            color: var(--text);
+            font-family: ui-sans-serif, system-ui, -apple-system, Roboto, "Segoe UI", Arial, sans-serif;
+            line-height: 1.5;
+        }
+
+        a {
+            color: inherit;
+            text-decoration: none;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 24px;
+        }
+
+        .row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+
+        .col {
+            flex: 1 1 0;
+        }
+
+        .col-auto {
+            flex: 0 0 auto;
+        }
+
+        .card {
+            background: linear-gradient(180deg, var(--panel), var(--panel-2));
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            box-shadow: var(--shadow);
+            transition: box-shadow 0.3s ease;
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 20px 24px;
+            border-bottom: 1px solid var(--border);
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .card-body {
+            padding: 24px;
+        }
+
+        .title {
+            font-size: 20px;
+            font-weight: 700;
+            letter-spacing: 0.2px;
+            margin: 0;
+        }
+
+        .muted {
+            color: var(--muted);
+            font-size: 14px;
+        }
+
+        .btn {
+            appearance: none;
+            border: 1px solid transparent;
+            border-radius: 8px;
+            padding: 8px 16px;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            box-shadow: var(--shadow-sm);
+            white-space: nowrap;
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn:not(:disabled):active {
+            transform: translateY(1px);
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: #fff;
+        }
+
+        .btn-primary:not(:disabled):hover {
+            background: var(--primary-600);
+            box-shadow: 0 4px 12px rgba(13, 110, 253, 0.3);
+        }
+
+        .btn-outline {
+            background: #fff;
+            border-color: var(--border);
+            color: var(--text);
+        }
+
+        .btn-outline:not(:disabled):hover {
+            border-color: #cbd5e1;
+            background: #f8fafc;
+        }
+
+        .btn-danger {
+            background: var(--danger);
+            color: #fff;
+        }
+
+        .btn-danger:not(:disabled):hover {
+            background: var(--danger-600);
+            box-shadow: 0 4px 12px rgba(220, 53, 69, 0.3);
+        }
+
+        .btn-sm {
+            padding: 5px 12px;
+            font-size: 13px;
+        }
+
+        .input,
+        select {
+            width: 100%;
+            background: var(--input);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 10px 12px;
+            color: var(--text);
+            outline: none;
+            box-shadow: var(--shadow-sm);
+            transition: all 0.2s ease;
+            font-size: 14px;
+        }
+
+        .input:focus,
+        select:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.1);
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+
+        .form-row .full {
+            grid-column: 1 / -1;
+        }
+
+        .label {
+            display: block;
+            margin: 0 0 8px;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text);
+        }
+
+        .error {
+            color: var(--danger);
+            font-size: 12px;
+            margin-top: 6px;
+            min-height: 18px;
+        }
+
+        .toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .grow {
+            flex: 1;
+        }
+
+        .search {
+            position: relative;
+            width: 100%;
+            max-width: 350px;
+        }
+
+        .search input {
+            padding-left: 40px;
+        }
+
+        .search .icon {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            opacity: 0.5;
+            pointer-events: none;
+        }
+
+        /* Table styles */
+        .table-wrapper {
+            overflow-x: auto;
+            margin: 0 -24px;
+            padding: 0 24px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0 8px;
+        }
+
+        th,
+        td {
+            text-align: left;
+            padding: 4px 10px;
+        }
+
+        thead th {
+            font-size: 12px;
+            font-weight: 700;
+            color: #1f2937;
+            background: #f1f5f9;
+            border: 1px solid var(--border);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        thead th:first-child {
+            border-top-left-radius: 10px;
+            border-bottom-left-radius: 10px;
+        }
+
+        thead th:last-child {
+            border-top-right-radius: 10px;
+            border-bottom-right-radius: 10px;
+        }
+
+        tbody tr {
+            background: #fff;
+            transition: all 0.2s ease;
+        }
+
+        tbody tr:hover {
+            background: #f8fafc;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
+        }
+
+        tbody td {
+            border-top: 1px solid var(--border);
+            border-bottom: 1px solid var(--border);
+        }
+
+        tbody td:first-child {
+            border-left: 1px solid var(--border);
+            border-top-left-radius: 10px;
+            border-bottom-left-radius: 10px;
+        }
+
+        tbody td:last-child {
+            border-right: 1px solid var(--border);
+            border-top-right-radius: 10px;
+            border-bottom-right-radius: 10px;
+        }
+
+        .pill {
+            font-size: 12px;
+            border: 1px solid var(--border);
+            padding: 6px 12px;
+            border-radius: 24px;
+            color: var(--muted);
+            background: #fff;
+            box-shadow: var(--shadow-sm);
+            font-weight: 600;
+        }
+
+        .pagination {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        /* Modal */
+        .modal-backdrop {
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.4);
+            backdrop-filter: blur(4px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            z-index: 50;
+            animation: fadeIn 0.2s ease;
+        }
+
+        .modal-backdrop.open {
+            display: flex;
+        }
+
+        .modal {
+            width: 100%;
+            max-width: 600px;
+            animation: slideUp 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Toast */
+        .toasts {
+            position: fixed;
+            right: 20px;
+            bottom: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            z-index: 60;
+            pointer-events: none;
+        }
+
+        .toast {
+            min-width: 280px;
+            max-width: 420px;
+            background: #fff;
+            border: 1px solid var(--border);
+            padding: 14px 16px;
+            border-radius: 10px;
+            box-shadow: var(--shadow-lg);
+            animation: toastIn 0.3s ease;
+            pointer-events: auto;
+            transition: all 0.3s ease;
+        }
+
+        .toast.success {
+            border-left: 4px solid var(--success);
+        }
+
+        .toast.error {
+            border-left: 4px solid var(--danger);
+        }
+
+        @keyframes toastIn {
+            from {
+                opacity: 0;
+                transform: translateX(100px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .kbd {
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-family: monospace;
+            box-shadow: var(--shadow-sm);
+        }
+
+        /* Loading spinner */
+        .spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-top-color: #fff;
+            border-radius: 50%;
+            animation: spin 0.6s linear infinite;
+        }
+
+        .spinner-primary {
+            border-color: rgba(13, 110, 253, 0.2);
+            border-top-color: var(--primary);
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .loading-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(2px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            border-radius: 12px;
+            z-index: 10;
+        }
+
+        .loading-overlay.active {
+            display: flex;
+        }
+
+        /* Empty state */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--muted);
+        }
+
+        .empty-state svg {
+            margin-bottom: 16px;
+            opacity: 0.5;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+
+            .toolbar {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .search {
+                max-width: 100%;
+            }
+
+            .pagination {
+                justify-content: space-between;
+            }
+
+            .card-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .table-wrapper {
+                margin: 0 -12px;
+                padding: 0 12px;
+            }
+
+            th,
+            td {
+                padding: 10px 12px;
+                font-size: 13px;
+            }
+
+            .btn {
+                padding: 6px 12px;
+                font-size: 13px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="card">
+            <div class="card-header">
+                <div>
+                    <div class="title">用户管理系统</div>
+                    <div class="muted">Fastify API · Supabase (PostgreSQL)</div>
+                </div>
+                <div class="toolbar">
+                    <div class="pill" id="envInfo">
+                        <span id="apiBaseLabel">/api</span>
+                    </div>
+                    <button class="btn btn-outline" id="btnReload">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <path
+                                d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2" />
+                        </svg>
+                        刷新 <span class="kbd">R</span>
+                    </button>
+                    <button class="btn btn-primary" id="btnCreate">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <line x1="12" y1="5" x2="12" y2="19"></line>
+                            <line x1="5" y1="12" x2="19" y2="12"></line>
+                        </svg>
+                        新增用户
+                    </button>
+                </div>
+            </div>
+            <div class="card-body" style="position: relative;">
+                <div class="loading-overlay" id="loadingOverlay">
+                    <div class="spinner spinner-primary" style="width: 32px; height: 32px; border-width: 3px;"></div>
+                </div>
+
+                <div class="row" style="gap:12px;margin-bottom:20px">
+                    <div class="col grow">
+                        <div class="search">
+                            <svg class="icon" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="11" cy="11" r="8"></circle>
+                                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                            </svg>
+                            <input id="q" class="input" placeholder="按 name 或 email 搜索（回车）" />
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <select id="limit" class="input" title="每页数量">
+                            <option value="10">10/页</option>
+                            <option value="20" selected>20/页</option>
+                            <option value="50">50/页</option>
+                            <option value="100">100/页</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th style="min-width:200px">姓名</th>
+                                <th style="min-width:80px">年龄</th>
+                                <th style="min-width:240px">邮箱</th>
+                                <th style="min-width:160px">创建时间</th>
+                                <th style="width:160px">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tbody"></tbody>
+                    </table>
+                </div>
+
+                <div class="row" style="align-items:center;justify-content:space-between;margin-top:20px">
+                    <div class="col-auto muted" id="stats">—</div>
+                    <div class="col-auto pagination">
+                        <button class="btn btn-outline btn-sm" id="prevBtn">上一页</button>
+                        <div class="pill" id="pageInfo">第 1 页</div>
+                        <button class="btn btn-outline btn-sm" id="nextBtn">下一页</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Create/Edit -->
+    <div id="modalBackdrop" class="modal-backdrop">
+        <div class="card modal">
+            <div class="card-header">
+                <div class="title" id="modalTitle">新增用户</div>
+                <button class="btn btn-outline btn-sm" id="modalClose">关闭</button>
+            </div>
+            <div class="card-body">
+                <form id="userForm">
+                    <input type="hidden" id="userId" />
+                    <div class="form-row">
+                        <div class="full">
+                            <label class="label" for="name">姓名 *</label>
+                            <input class="input" id="name" placeholder="例如：Alice" required />
+                            <div class="error" id="err-name"></div>
+                        </div>
+                        <div>
+                            <label class="label" for="age">年龄</label>
+                            <input class="input" id="age" type="number" min="0" placeholder="可留空" />
+                            <div class="error" id="err-age"></div>
+                        </div>
+                        <div>
+                            <label class="label" for="email">邮箱 *</label>
+                            <input class="input" id="email" type="email" placeholder="name@example.com" required />
+                            <div class="error" id="err-email"></div>
+                        </div>
+                    </div>
+                    <div class="row" style="justify-content:flex-end;gap:10px">
+                        <button type="button" class="btn btn-outline" id="btnCancel">取消</button>
+                        <button type="submit" class="btn btn-primary" id="btnSave">
+                            <span class="btn-text">保存</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toasts -->
+    <div class="toasts" id="toasts"></div>
+
+    <script>
+        (function () {
+            'use strict';
+
+            // ===== Config =====
+            const API_BASE = 'http://localhost:3000/api';
+
+            // ===== DOM Helper Functions =====
+            function getElement(selector) {
+                return document.querySelector(selector);
+            }
+
+            function getAllElements(selector) {
+                return Array.from(document.querySelectorAll(selector));
+            }
+
+            // ===== Initialize DOM references =====
+            const DOM = {
+                apiBaseLabel: getElement('#apiBaseLabel'),
+                loadingOverlay: getElement('#loadingOverlay'),
+                btnReload: getElement('#btnReload'),
+                btnCreate: getElement('#btnCreate'),
+                searchInput: getElement('#q'),
+                limitSelect: getElement('#limit'),
+                tbody: getElement('#tbody'),
+                stats: getElement('#stats'),
+                pageInfo: getElement('#pageInfo'),
+                prevBtn: getElement('#prevBtn'),
+                nextBtn: getElement('#nextBtn'),
+                modal: getElement('#modalBackdrop'),
+                modalTitle: getElement('#modalTitle'),
+                modalClose: getElement('#modalClose'),
+                userForm: getElement('#userForm'),
+                userId: getElement('#userId'),
+                nameInput: getElement('#name'),
+                ageInput: getElement('#age'),
+                emailInput: getElement('#email'),
+                btnCancel: getElement('#btnCancel'),
+                btnSave: getElement('#btnSave'),
+                toasts: getElement('#toasts')
+            };
+
+            // Set API base label
+            DOM.apiBaseLabel.textContent = API_BASE;
+
+            // ===== Utility Functions =====
+            function formatDate(iso) {
+                if (!iso) return '';
+                return new Date(iso).toLocaleString('zh-CN', {
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+            }
+
+            function escapeHtml(str) {
+                const text = String(str == null ? '' : str);
+                return text
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/'/g, '&#39;');
+            }
+
+            function showToast(message, type = 'success', timeout = 3000) {
+                const toast = document.createElement('div');
+                toast.className = `toast ${type}`;
+                const icon = type === 'success' ? '✓' : '⚠';
+                const title = type === 'success' ? '成功' : '错误';
+                toast.innerHTML = `
+                    <div style="font-weight:700;margin-bottom:4px">${icon} ${title}</div>
+                    <div>${escapeHtml(message)}</div>
+                `;
+                DOM.toasts.appendChild(toast);
+
+                setTimeout(() => {
+                    toast.style.opacity = '0';
+                    toast.style.transform = 'translateX(100px)';
+                }, timeout);
+
+                setTimeout(() => toast.remove(), timeout + 300);
+            }
+
+            // ===== API Functions =====
+            async function apiRequest(method, path, body = null) {
+                const options = {
+                    method,
+                    headers: body ? { 'Content-Type': 'application/json' } : undefined,
+                    body: body ? JSON.stringify(body) : undefined,
+                };
+
+                const response = await fetch(`${API_BASE}${path}`, options);
+                const text = await response.text();
+
+                let json;
+                try {
+                    json = text ? JSON.parse(text) : null;
+                } catch {
+                    json = { raw: text };
+                }
+
+                if (!response.ok) {
+                    const detail = json && (json.detail || json.message || json.error || json.raw) || response.statusText;
+                    throw new Error(`${response.status} ${detail}`);
+                }
+
+                return json;
+            }
+
+            async function fetchUsers({ q, limit, offset }) {
+                const realLimit = limit + 1;
+                const params = new URLSearchParams({
+                    limit: String(realLimit),
+                    offset: String(offset)
+                });
+                if (q && q.trim()) {
+                    params.set('q', q.trim());
+                }
+                const rows = await apiRequest('GET', `/users?${params.toString()}`);
+                const hasMore = rows.length > limit;
+                return {
+                    rows: rows.slice(0, limit),
+                    hasMore
+                };
+            }
+
+            // ===== State Management =====
+            const state = {
+                page: 1,
+                limit: Number(DOM.limitSelect.value),
+                q: '',
+                hasMore: false,
+                loading: false,
+            };
+
+            // ===== UI Update Functions =====
+            function setLoading(isLoading) {
+                state.loading = isLoading;
+
+                if (isLoading) {
+                    DOM.loadingOverlay.classList.add('active');
+                } else {
+                    DOM.loadingOverlay.classList.remove('active');
+                }
+
+                DOM.btnReload.disabled = isLoading;
+                DOM.nextBtn.disabled = isLoading || !state.hasMore;
+                DOM.prevBtn.disabled = isLoading || state.page === 1;
+            }
+
+            function renderRows(users) {
+                if (!users.length) {
+                    DOM.tbody.innerHTML = `
+                        <tr>
+                            <td colspan="5" style="border: none;">
+                                <div class="empty-state">
+                                    <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                                        <circle cx="12" cy="7" r="4"></circle>
+                                    </svg>
+                                    <div style="font-size: 16px; font-weight: 600; margin-bottom: 4px;">没有数据</div>
+                                    <div style="font-size: 14px;">尝试调整搜索条件或新增用户</div>
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+                    return;
+                }
+
+                DOM.tbody.innerHTML = users.map(user => `
+                    <tr data-id="${user.id}">
+                        <td>
+                            <div style="font-weight:600">${escapeHtml(user.name)}</div>
+                        </td>
+                        <td>${user.age ?? '—'}</td>
+                        <td>${escapeHtml(user.email)}</td>
+                        <td style="color: var(--muted); font-size: 13px;">${formatDate(user.created_at)}</td>
+                        <td>
+                            <div style="display:flex;gap:8px">
+                                <button class="btn btn-outline btn-sm" data-action="edit" data-id="${user.id}">编辑</button>
+                                <button class="btn btn-danger btn-sm" data-action="del" data-id="${user.id}">删除</button>
+                            </div>
+                        </td>
+                    </tr>
+                `).join('');
+            }
+
+            function renderPager() {
+                DOM.prevBtn.disabled = state.page === 1 || state.loading;
+                DOM.nextBtn.disabled = !state.hasMore || state.loading;
+                DOM.pageInfo.textContent = `第 ${state.page} 页`;
+            }
+
+            function renderStats(listLength) {
+                if (!listLength) {
+                    DOM.stats.textContent = '—';
+                    return;
+                }
+                const from = (state.page - 1) * state.limit + 1;
+                const to = (state.page - 1) * state.limit + listLength;
+                DOM.stats.textContent = `显示第 ${from}—${to} 条（每页 ${state.limit} 条）`;
+            }
+
+            // ===== Data Loading =====
+            async function loadData() {
+                try {
+                    setLoading(true);
+                    const offset = (state.page - 1) * state.limit;
+                    const { rows, hasMore } = await fetchUsers({
+                        q: state.q,
+                        limit: state.limit,
+                        offset
+                    });
+                    state.hasMore = hasMore;
+                    renderRows(rows);
+                    renderPager();
+                    renderStats(rows.length);
+                } catch (error) {
+                    console.error('Load error:', error);
+                    showToast(`加载失败：${error.message}`, 'error');
+                } finally {
+                    setLoading(false);
+                }
+            }
+
+            // ===== Modal Functions =====
+            function clearErrors() {
+                const errorElements = document.querySelectorAll('.error');
+                errorElements.forEach(el => {
+                    el.textContent = '';
+                });
+            }
+
+            function setError(field, message) {
+                const errorEl = document.querySelector(`#err-${field}`);
+                if (errorEl) {
+                    errorEl.textContent = message || '';
+                }
+            }
+
+            function openModal(mode, userId = null) {
+                clearErrors();
+                DOM.userForm.dataset.mode = mode;
+
+                if (mode === 'create') {
+                    DOM.modalTitle.textContent = '新增用户';
+                    DOM.userId.value = '';
+                    DOM.nameInput.value = '';
+                    DOM.ageInput.value = '';
+                    DOM.emailInput.value = '';
+                    DOM.modal.classList.add('open');
+                    setTimeout(() => DOM.nameInput.focus(), 100);
+                } else {
+                    DOM.modalTitle.textContent = '编辑用户';
+                    loadUserAndFill(userId);
+                }
+            }
+
+            function closeModal() {
+                DOM.modal.classList.remove('open');
+            }
+
+            async function loadUserAndFill(userId) {
+                try {
+                    const user = await apiRequest('GET', `/users/${userId}`);
+                    DOM.userId.value = user.id;
+                    DOM.nameInput.value = user.name || '';
+                    DOM.ageInput.value = user.age ?? '';
+                    DOM.emailInput.value = user.email || '';
+                    DOM.modal.classList.add('open');
+                    setTimeout(() => DOM.nameInput.focus(), 100);
+                } catch (error) {
+                    showToast(`读取失败：${error.message}`, 'error');
+                }
+            }
+
+            function validateForm() {
+                clearErrors();
+                let isValid = true;
+
+                const name = DOM.nameInput.value.trim();
+                const email = DOM.emailInput.value.trim();
+                const age = DOM.ageInput.value.trim();
+
+                if (!name) {
+                    setError('name', '必填');
+                    isValid = false;
+                }
+
+                if (!email) {
+                    setError('email', '必填');
+                    isValid = false;
+                } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+                    setError('email', '格式不正确');
+                    isValid = false;
+                }
+
+                if (age !== '' && (!/^\d+$/.test(age) || Number(age) < 0)) {
+                    setError('age', '必须是非负整数或留空');
+                    isValid = false;
+                }
+
+                return isValid;
+            }
+
+            async function saveUser(event) {
+                event.preventDefault();
+
+                if (!validateForm()) {
+                    return;
+                }
+
+                const payload = {
+                    name: DOM.nameInput.value.trim(),
+                    email: DOM.emailInput.value.trim(),
+                    age: DOM.ageInput.value.trim() === '' ? null : Number(DOM.ageInput.value.trim())
+                };
+
+                const mode = DOM.userForm.dataset.mode;
+                const btnText = DOM.btnSave.querySelector('.btn-text');
+
+                try {
+                    DOM.btnSave.disabled = true;
+                    btnText.innerHTML = '<span class="spinner"></span> 保存中...';
+
+                    if (mode === 'create') {
+                        await apiRequest('POST', '/users', payload);
+                        showToast('创建成功');
+                    } else {
+                        const userId = DOM.userId.value;
+                        await apiRequest('PUT', `/users/${userId}`, payload);
+                        showToast('保存成功');
+                    }
+
+                    closeModal();
+                    await loadData();
+                } catch (error) {
+                    const errorMessage = String(error.message || error);
+                    if (/duplicate key value/.test(errorMessage) || /unique/.test(errorMessage)) {
+                        setError('email', '该 Email 已存在');
+                    } else {
+                        showToast(`保存失败：${errorMessage}`, 'error');
+                    }
+                } finally {
+                    DOM.btnSave.disabled = false;
+                    btnText.textContent = '保存';
+                }
+            }
+
+            async function confirmDelete(userId) {
+                const row = document.querySelector(`tr[data-id="${userId}"]`);
+                const name = row ? row.children[0].textContent.trim() : userId;
+
+                const confirmed = await showConfirmDialog(`确定要删除用户 "${name}" 吗？此操作不可恢复。`);
+                if (!confirmed) return;
+
+                try {
+                    await apiRequest('DELETE', `/users/${userId}`);
+                    showToast('已删除');
+
+                    const currentPageRows = document.querySelectorAll('#tbody tr[data-id]');
+                    if (currentPageRows.length === 1 && state.page > 1) {
+                        state.page--;
+                    }
+
+                    await loadData();
+                } catch (error) {
+                    showToast(`删除失败：${error.message}`, 'error');
+                }
+            }
+
+            function showConfirmDialog(message) {
+                return new Promise((resolve) => {
+                    const overlay = document.createElement('div');
+                    overlay.className = 'modal-backdrop open';
+                    overlay.innerHTML = `
+                        <div class="card modal" style="max-width: 480px;">
+                            <div class="card-header">
+                                <div class="title">确认操作</div>
+                            </div>
+                            <div class="card-body">
+                                <p style="margin:0 0 20px; line-height: 1.6;">${escapeHtml(message)}</p>
+                                <div class="row" style="justify-content:flex-end;gap:10px">
+                                    <button class="btn btn-outline" data-action="cancel">取消</button>
+                                    <button class="btn btn-danger" data-action="confirm">确定删除</button>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    document.body.appendChild(overlay);
+
+                    const cancelBtn = overlay.querySelector('[data-action="cancel"]');
+                    const confirmBtn = overlay.querySelector('[data-action="confirm"]');
+
+                    const cleanup = (result) => {
+                        overlay.remove();
+                        resolve(result);
+                    };
+
+                    cancelBtn.addEventListener('click', () => cleanup(false));
+                    confirmBtn.addEventListener('click', () => cleanup(true));
+                    overlay.addEventListener('click', (e) => {
+                        if (e.target === overlay) cleanup(false);
+                    });
+
+                    const escHandler = (e) => {
+                        if (e.key === 'Escape') {
+                            document.removeEventListener('keydown', escHandler);
+                            cleanup(false);
+                        }
+                    };
+                    document.addEventListener('keydown', escHandler);
+                });
+            }
+
+            // ===== Event Listeners =====
+
+            // Reload button
+            DOM.btnReload.addEventListener('click', () => {
+                state.page = 1;
+                loadData();
+            });
+
+            // Create button
+            DOM.btnCreate.addEventListener('click', () => {
+                openModal('create');
+            });
+
+            // Limit selector
+            DOM.limitSelect.addEventListener('change', () => {
+                state.limit = Number(DOM.limitSelect.value);
+                state.page = 1;
+                loadData();
+            });
+
+            // Search input
+            DOM.searchInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    state.q = DOM.searchInput.value;
+                    state.page = 1;
+                    loadData();
+                }
+            });
+
+            // Keyboard shortcut for reload
+            document.addEventListener('keydown', (e) => {
+                if (e.key?.toLowerCase() === 'r' && !e.ctrlKey && !e.metaKey) {
+                    const target = e.target;
+                    if (target.tagName !== 'INPUT' && target.tagName !== 'TEXTAREA') {
+                        e.preventDefault();
+                        state.page = 1;
+                        loadData();
+                    }
+                }
+            });
+
+            // Pagination buttons
+            DOM.prevBtn.addEventListener('click', () => {
+                if (state.page > 1) {
+                    state.page--;
+                    loadData();
+                }
+            });
+
+            DOM.nextBtn.addEventListener('click', () => {
+                if (state.hasMore) {
+                    state.page++;
+                    loadData();
+                }
+            });
+
+            // Table row actions (edit/delete)
+            DOM.tbody.addEventListener('click', (e) => {
+                const button = e.target.closest('button');
+                if (!button) return;
+
+                const action = button.dataset.action;
+                const userId = button.dataset.id;
+
+                if (action === 'edit') {
+                    openModal('edit', userId);
+                } else if (action === 'del') {
+                    confirmDelete(userId);
+                }
+            });
+
+            // Modal close buttons
+            DOM.modalClose.addEventListener('click', closeModal);
+            DOM.btnCancel.addEventListener('click', closeModal);
+
+            // Click outside modal to close
+            DOM.modal.addEventListener('click', (e) => {
+                if (e.target === DOM.modal) {
+                    closeModal();
+                }
+            });
+
+            // ESC to close modal
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape' && DOM.modal.classList.contains('open')) {
+                    closeModal();
+                }
+            });
+
+            // Form submit
+            DOM.userForm.addEventListener('submit', saveUser);
+
+            // ===== Initialize =====
+            (async function initialize() {
+                console.log('Initializing User Admin System...');
+                await loadData();
+                console.log('User Admin System ready!');
+            })();
+        })();
+    </script>
+</body>
+
+</html>
