@@ -1,5 +1,5 @@
 {
-  "name": "fastify-sqlite-crud",
+  "name": "fastify-supabase-crud",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
@@ -11,13 +11,10 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
-    "@fastify/cookie": "^11.0.2",
     "@fastify/cors": "^11.1.0",
-    "@fastify/session": "^11.1.0",
     "dotenv": "^17.2.3",
     "fastify": "^5.6.1",
     "fastify-plugin": "^5.1.0",
-    "pg": "^8.16.3",
-    "sqlite3": "^5.1.7"
+    "pg": "^8.16.3"
   }
 }
