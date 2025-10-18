@@ -4,3 +4,21 @@
 
 1、安装依赖：
 `npm i fastify fastify-plugin pg dotenv`
+
+2、目录：
+```
+project/
+  user-admin.html
+  .env
+  fastify_supabase.js
+  plugins/
+    db.js
+  routes/
+    users.js
+```
+
+**1) 使用 fastify-plugin 暴露数据库连接（带自动建表/迁移）: plugins/db.js**
+
+**2) 路由：users 增删改查（带参数校验与分页）: routes/users.js**
+
+**3) 启动: node fastify_supabase.js**
