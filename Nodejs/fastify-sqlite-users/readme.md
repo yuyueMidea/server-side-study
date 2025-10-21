@@ -18,6 +18,7 @@
 | DELETE | `/users/:id` | 删除      | 默认软删；`?hard=true` 硬删/物理删除                                      |
 
 测试命令（curl）
+```
 # 1) 健康检查
 curl -s http://127.0.0.1:3000/health
 
@@ -61,3 +62,4 @@ curl -s "http://127.0.0.1:3000/users?includeDeleted=true"
 
 # 12) 硬删除（物理删除）
 curl -i -X DELETE "http://127.0.0.1:3000/users/2?hard=true"
+```
