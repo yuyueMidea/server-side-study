@@ -1,4 +1,6 @@
 fastify.js + sqlite3 实现用户增删改功能
+
+安装依赖
 ```
 npm init -y
 npm install fastify sqlite3 @fastify/cors @fastify/static
@@ -10,3 +12,5 @@ npm install -D nodemon
 - POST /users - 创建
 - PUT /users/:id - 更新
 - DELETE /users/:id - 删除
+
+前端：public/index.html
