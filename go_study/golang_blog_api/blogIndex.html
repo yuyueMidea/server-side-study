@@ -821,9 +821,8 @@
                 fetch(this.apiBase + '/posts/' + id)
                     .then(function (res) { return res.json(); })
                     .then(function (data) {
-                        console.log('editdata: ', data)
                         if (data.code === 200) {
-                            document.getElementById('editPostId').value = data.data.id;
+                            document.getElementById('editPostId').value = data.data.ID;
                             document.getElementById('editPostTitle').value = data.data.title;
                             document.getElementById('editPostContent').value = data.data.content;
 
@@ -843,7 +842,6 @@
                 var id = document.getElementById('editPostId').value;
                 var title = document.getElementById('editPostTitle').value;
                 var content = document.getElementById('editPostContent').value;
-
                 fetch(this.apiBase + '/posts/' + id, {
                     method: 'PUT',
                     headers: {
