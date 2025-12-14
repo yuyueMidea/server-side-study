@@ -658,7 +658,6 @@
                 fetch(this.apiBase + '/posts')
                     .then(function (res) { return res.json(); })
                     .then(function (data) {
-                        console.log('postdata: ', data)
                         if (data.code === 200) {
                             self.renderPosts(data.data.posts || [], 'postsList');
                         }
@@ -681,7 +680,7 @@
                     .then(function (res) { return res.json(); })
                     .then(function (data) {
                         if (data.code === 200) {
-                            var myPosts = (data.data || []).filter(function (post) {
+                            var myPosts = (data.data.posts || []).filter(function (post) {
                                 return post.user_id === self.user.id;
                             });
                             self.renderPosts(myPosts, 'myPostsList', true);
@@ -700,9 +699,8 @@
                     container.innerHTML = '<div class="empty-state"><div style="font-size: 48px;">📭</div><p>暂无文章</p></div>';
                     return;
                 }
-                
+
                 container.innerHTML = posts.map(function (post) {
-                    console.warn('postttt: ',post )
                     var actions = '';
                     if (showActions && self.user && post.user_id === self.user.id) {
                         actions = '<div class="post-actions">' +
@@ -823,6 +821,7 @@
                 fetch(this.apiBase + '/posts/' + id)
                     .then(function (res) { return res.json(); })
                     .then(function (data) {
+                        console.log('editdata: ', data)
                         if (data.code === 200) {
                             document.getElementById('editPostId').value = data.data.id;
                             document.getElementById('editPostTitle').value = data.data.title;
@@ -1038,7 +1037,7 @@
                     .then(function (createData) {
                         if (createData.code === 200) {
                             self.addTestResult('✓ 创建文章测试通过', true);
-                            postId = createData.data.id;
+                            postId = createData.data.ID;
 
                             return fetch(self.apiBase + '/posts/' + postId);
                         } else {
@@ -1129,7 +1128,7 @@
                     .then(function (res) { return res.json(); })
                     .then(function (postData) {
                         if (postData.code === 200) {
-                            postId = postData.data.id;
+                            postId = postData.data.ID;
 
                             return fetch(self.apiBase + '/posts/' + postId + '/comments', {
                                 method: 'POST',
