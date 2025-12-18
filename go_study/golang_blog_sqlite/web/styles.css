@@ -1,239 +1,544 @@
-/* Vanilla CSS (no deps) */
+/* =========================================================
+   Golang Blog API Tester - Light Bootstrap-ish (No deps)
+   Layout upgrade:
+   - Right logs moved to bottom (CSS grid reorder)
+   - Posts view stacks sections (less cramped)
+   - Response blocks wrap long strings, no page overflow
+   ========================================================= */
+
 :root{
-  --bg:#0b0d12;
-  --panel:#111522;
-  --panel2:#0f1320;
-  --text:#e9ecf1;
-  --muted:#a9b1c0;
-  --border:rgba(255,255,255,0.08);
-  --shadow:0 10px 30px rgba(0,0,0,0.35);
-  --radius:16px;
-  --radius2:12px;
-  --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  --bg: #f8f9fa;
+  --panel: #ffffff;
+  --panel2: #f8f9fa;
+  --text: #212529;
+  --muted: #6c757d;
+  --border: #dee2e6;
+  --shadow: 0 1px 2px rgba(0,0,0,.06), 0 10px 30px rgba(0,0,0,.06);
+  --radius: 12px;
+  --radius2: 10px;
+
+  --primary: #0d6efd;
+  --primary-weak: rgba(13,110,253,.10);
+  --danger: #dc3545;
+  --danger-weak: rgba(220,53,69,.10);
+
+  --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono","Courier New", monospace;
   --sans: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
 }
 
-*{box-sizing:border-box}
-html,body{height:100%}
+*{ box-sizing:border-box; }
+html,body{ height:100%; margin:0; overflow-x:hidden; }
 body{
-  margin:0;
-  font-family:var(--sans);
-  background: radial-gradient(1200px 800px at 10% 10%, rgba(255,255,255,0.06), transparent 60%),
-              radial-gradient(900px 600px at 80% 0%, rgba(255,255,255,0.05), transparent 60%),
-              var(--bg);
-  color:var(--text);
+  font-family: var(--sans);
+  background: var(--bg);
+  color: var(--text);
 }
 
-a{color:inherit}
-.muted{color:var(--muted)}
-.small{font-size:12px}
-.mono{font-family:var(--mono)}
+/* Allow grid/flex children to shrink (prevents long content expanding layout) */
+.layout,
+.sidebar,.content,.rightbar,.inspector,
+.card,.card-header,.card-body,
+.grid-2 > *,.grid-3 > *,.split > *,
+.list,.post-item,.post-meta,
+pre,.pre,.code,
+.logs,.log{
+  min-width:0;
+}
 
-.app-header{
-  position:sticky; top:0; z-index:10;
-  display:flex; gap:16px; align-items:center; justify-content:space-between;
-  padding:14px 18px;
-  background: rgba(10,12,18,0.9);
-  backdrop-filter: blur(10px);
+a{ color:inherit; text-decoration:none; }
+.muted{ color: var(--muted); }
+
+/* =========================================================
+   Top bar (supports .navbar naming)
+   ========================================================= */
+.navbar, .app-header{
+  position: sticky;
+  top:0;
+  z-index:10;
+
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:14px;
+
+  padding:12px 16px;
+  background: var(--panel);
   border-bottom: 1px solid var(--border);
 }
 
-.brand{display:flex; gap:12px; align-items:center}
+.brand{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  min-width: 240px;
+}
 .logo{
-  width:38px; height:38px; border-radius:12px;
-  display:grid; place-items:center;
-  background: rgba(255,255,255,0.08);
-  border:1px solid var(--border);
+  width:40px;height:40px;
+  border-radius:10px;
+  display:grid;
+  place-items:center;
+  background:#111827;
+  color:#fff;
   font-weight:800;
 }
-.title{font-weight:800; letter-spacing:0.2px}
-.subtitle{font-size:12px; color:var(--muted)}
+.brand-title,.title{ font-weight:800; letter-spacing:.2px; }
+.brand-subtitle,.subtitle{ font-size:12px; color:var(--muted); margin-top:2px; }
 
-.header-right{display:flex; gap:14px; align-items:center; flex-wrap:wrap; justify-content:flex-end}
-.api-base{display:flex; gap:8px; align-items:center}
-.api-base label{font-size:12px; color:var(--muted)}
-.api-base input{
-  width:260px; max-width:46vw;
-  padding:10px 12px;
-  border-radius:12px;
-  border:1px solid var(--border);
-  background: rgba(255,255,255,0.05);
-  color:var(--text);
+.nav-actions,.header-right{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  flex-wrap:wrap;
+  justify-content:flex-end;
 }
-.session{display:flex; gap:10px; align-items:center}
-.session-info{display:flex; flex-direction:column; gap:2px}
-#tokenState{max-width:220px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:12px}
 
+.field-inline{
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+.label{
+  font-size:12px;
+  color:var(--muted);
+}
+
+/* Token box */
+.token-box, .session{
+  display:flex;
+  align-items:flex-start;
+  gap:10px;
+  padding:8px 10px;
+  border:1px solid var(--border);
+  background: var(--panel2);
+  border-radius:10px;
+}
+.token-label{ font-size:12px; color:var(--muted); }
+.token-status, #tokenState{
+  font-size:12px;
+  max-width: 260px;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+/* =========================================================
+   Inputs
+   ========================================================= */
+.input, input, textarea, select{
+  font-family: var(--sans);
+  border:1px solid var(--border);
+  background:#fff;
+  color: var(--text);
+  border-radius:10px;
+  padding:10px 12px;
+  outline:none;
+}
+textarea{ resize: vertical; }
+.input:focus, input:focus, textarea:focus, select:focus{
+  border-color: rgba(13,110,253,.55);
+  box-shadow: 0 0 0 3px rgba(13,110,253,.12);
+}
+.input-sm{ padding:8px 10px; border-radius:10px; }
+
+/* API base input width */
+#apiBaseInput, #apiBase, .api-base input{
+  width: 280px;
+  max-width: 46vw;
+}
+
+/* =========================================================
+   Buttons
+   ========================================================= */
+.btn, button{
+  border:1px solid var(--border);
+  background:#fff;
+  color: var(--text);
+  border-radius:10px;
+  padding:10px 12px;
+  cursor:pointer;
+  font-weight:600;
+  margin: 1px 2px;
+}
+.btn:hover, button:hover{ filter: brightness(.98); }
+.btn:active, button:active{ transform: translateY(1px); }
+.btn:disabled, button:disabled{ opacity:.6; cursor:not-allowed; transform:none; }
+
+.btn-primary{
+  background: var(--primary);
+  border-color: var(--primary);
+  color:#fff;
+}
+.btn-outline{
+  background:#fff;
+  border-color: var(--border);
+}
+.btn-danger{
+  background: var(--danger);
+  border-color: var(--danger);
+  color:#fff;
+}
+.btn-sm{
+  padding:7px 10px;
+  font-size:12px;
+  border-radius:10px;
+}
+
+/* =========================================================
+   Global Layout (sidebar + content, logs moved to bottom)
+   HTML order: sidebar, content, rightbar
+   We use grid-areas to place rightbar under content.
+   ========================================================= */
 .layout{
   display:grid;
-  grid-template-columns: 220px 1fr 340px;
+  grid-template-columns: 260px minmax(0, 1fr);
+  grid-template-areas:
+    "sidebar content"
+    "sidebar logs";
   gap:16px;
-  padding:16px 18px 22px;
+  padding:16px;
   align-items:start;
 }
 
+/* place elements into areas */
+.sidebar{ grid-area: sidebar; }
+.content{ grid-area: content; }
+.rightbar, .inspector{ grid-area: logs; }
+
+/* Sidebar */
 .sidebar{
-  position:sticky; top:78px;
-  display:flex; flex-direction:column;
-  gap:8px;
-  padding:10px;
+  position: sticky;
+  top: 76px;
+
+  padding:12px;
   border-radius: var(--radius);
-  background: rgba(255,255,255,0.03);
+  background: var(--panel);
   border:1px solid var(--border);
+  box-shadow: var(--shadow);
+}
+
+.sidebar-title{
+  font-weight:800;
+  margin-bottom:10px;
+}
+.nav{
+  display:flex;
+  flex-direction:column;
+  gap:6px;
 }
 .nav-item{
   width:100%;
-  padding:12px 12px;
-  border-radius: 12px;
+  text-align:left;
   border:1px solid transparent;
   background: transparent;
-  color: var(--text);
-  text-align:left;
-  cursor:pointer;
-}
-.nav-item:hover{background: rgba(255,255,255,0.04)}
-.nav-item.active{
-  background: rgba(255,255,255,0.06);
-  border-color: var(--border);
-}
-.nav-help{
-  margin-top:8px;
   padding:10px 12px;
-  border-top:1px solid var(--border);
+  border-radius:10px;
+  cursor:pointer;
+  color: var(--text);
+}
+.nav-item:hover{ background: var(--panel2); }
+.nav-item.active{
+  background: var(--primary-weak);
+  border-color: rgba(13,110,253,.25);
 }
 
-.content{min-width:0}
-.inspector{position:sticky; top:78px; min-width:0}
-.footer{padding:10px 18px 20px; text-align:center}
+/* Hint box */
+.hint, .nav-help{
+  margin-top:12px;
+  padding-top:12px;
+  border-top:1px solid var(--border);
+  color:var(--muted);
+  font-size:13px;
+}
+.hint-title{ font-weight:800; color: var(--text); margin-bottom:6px; }
+.hint-body ol{ margin:6px 0 0 18px; padding:0; }
+.hint-body li{ margin:4px 0; }
 
-.tab{display:none}
-.tab.active{display:block}
+/* Content */
+.content{
+  display:flex;
+  flex-direction:column;
+  gap:14px;
+  min-width:0;
+}
 
-h2{margin:6px 0 10px}
-p{margin:8px 0 10px}
+/* Headings */
+h1{
+  font-size:22px;
+  margin:6px 0 4px;
+  font-weight:900;
+}
+h2{
+  font-size:16px;
+  margin:6px 0 10px;
+  font-weight:800;
+}
 
+/* views */
+.view{ display:none; }
+.view.active{ display:block; }
+
+/* =========================================================
+   Cards
+   ========================================================= */
 .card{
-  background: rgba(255,255,255,0.03);
+  background: var(--panel);
   border:1px solid var(--border);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
-  padding:14px;
-  margin-bottom:14px;
-  min-width:0;
+  overflow:hidden;
+  padding: 11px;
 }
 .card-header{
-  font-weight:700;
-  margin-bottom:10px;
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:12px;
+
+  padding:12px 14px;
+  background: #fbfdff;
+  border-bottom:1px solid var(--border);
+}
+.card-title{ font-weight:900; }
+.card-subtitle{
+  font-size:12px;
+  color: var(--muted);
+  margin-top:2px;
+}
+.card-body{ padding:12px 14px; }
+
+.section-title{
+  margin:12px 0 6px;
+  font-weight:900;
+  font-size:13px;
 }
 
-.subcard{
-  background: rgba(255,255,255,0.02);
-  border:1px solid var(--border);
-  border-radius: var(--radius2);
+/* Layout helpers */
+.row{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+.form{ display:flex; flex-direction:column; gap:10px; }
+.field{ display:flex; flex-direction:column; gap:6px; }
+
+/* grids (default: comfortable 2 cols) */
+.grid-2{
+  display:grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap:14px;
+}
+.grid-3{
+  display:grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr);
+  gap:14px;
+}
+.col-2{ grid-column: span 2; }
+
+/* split (health) */
+.split{
+  display:grid;
+  grid-template-columns: minmax(0,1fr) minmax(0,1fr);
+  gap:12px;
+}
+
+/* =========================================================
+   Key fix: Response blocks wrap (no horizontal overflow)
+   ========================================================= */
+pre, .pre, .code{
+  margin:0;
   padding:10px;
+
+  border:1px solid var(--border);
+  border-radius:10px;
+  background: var(--panel2);
+  color: #111827;
+
+  font-family: var(--mono);
+  font-size:12px;
+  line-height:1.5;
+
+  /* IMPORTANT: wrap long strings to prevent stretching the layout */
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+
+  max-width: 100%;
+  overflow: auto;      /* keep internal scroll if extremely large */
+  max-height: 420px;
+}
+
+/* =========================================================
+   Lists
+   ========================================================= */
+.list{ display:flex; flex-direction:column; gap:10px; }
+
+.post-item{
+  border:1px solid var(--border);
+  border-radius: 12px;
+  padding:10px;
+  display:flex;
+  justify-content:space-between;
+  gap:10px;
+  background:#fff;
+}
+.post-item:hover{ background: var(--panel2); }
+.post-meta{
+  display:flex;
+  flex-direction:column;
+  gap:4px;
   min-width:0;
 }
-.subheader{font-weight:650; margin-bottom:8px; color:var(--muted); font-size:12px}
-
-.grid-2{display:grid; grid-template-columns: 1fr 1fr; gap:14px}
-.grid-3{display:grid; grid-template-columns: 1fr 1fr 1fr; gap:14px}
-@media (max-width: 1100px){
-  .layout{grid-template-columns: 220px 1fr}
-  .inspector{display:none}
+.post-title{
+  font-weight:900;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
 }
-@media (max-width: 860px){
-  .layout{grid-template-columns: 1fr}
-  .sidebar{position:relative; top:0}
-  .app-header{position:relative}
-  .grid-2,.grid-3{grid-template-columns: 1fr}
-  .api-base input{width:100%}
-}
+.post-sub{ font-size:12px; color: var(--muted); }
+.post-actions{ display:flex; gap:8px; flex-wrap:wrap; }
 
-.form{display:flex; flex-direction:column; gap:10px}
-label{display:flex; flex-direction:column; gap:6px; font-size:13px}
-input,textarea,select{
-  padding:10px 12px;
-  border-radius: 12px;
-  border: 1px solid var(--border);
-  background: rgba(255,255,255,0.05);
-  color: var(--text);
-  outline:none;
-}
-textarea{resize: vertical; font-family: var(--sans)}
-select{cursor:pointer}
-
-.row{display:flex; gap:10px; align-items:center; flex-wrap:wrap}
-.split{display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-top:10px}
-@media (max-width: 860px){ .split{grid-template-columns: 1fr} }
-
-.btn{
-  padding:10px 12px;
-  border-radius: 12px;
-  border:1px solid var(--border);
-  background: rgba(255,255,255,0.05);
-  color: var(--text);
-  cursor:pointer;
-}
-.btn:hover{background: rgba(255,255,255,0.08)}
-.btn:disabled{opacity:0.55; cursor:not-allowed}
-.btn-primary{background: rgba(255,255,255,0.10)}
-.btn-secondary{background: rgba(255,255,255,0.03)}
-.btn-danger{
-  background: rgba(255, 80, 80, 0.12);
-  border-color: rgba(255, 80, 80, 0.25);
-}
-
-.pill{
-  padding:6px 10px;
-  border-radius: 999px;
-  border:1px solid var(--border);
-  background: rgba(255,255,255,0.04);
+.badge{
+  display:inline-block;
+  padding:2px 8px;
+  border-radius:999px;
   font-size:12px;
+  border:1px solid var(--border);
+  background: var(--panel2);
   color: var(--muted);
 }
 
-.pre{
-  margin:10px 0 0;
-  padding:10px;
-  border-radius: 12px;
+/* =========================================================
+   Bottom logs panel (moved from right to bottom)
+   ========================================================= */
+.rightbar, .inspector{
+  position: static;     /* remove sticky right behavior */
+  top: auto;
+  max-height: none;
+  overflow: hidden;
+
+  background: var(--panel);
   border:1px solid var(--border);
-  background: rgba(0,0,0,0.35);
-  color: #dce2ee;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding:12px;
+}
+
+/* Make it feel like a "bottom drawer" */
+.rightbar{
+  margin-top: 8px;
+}
+.rightbar-head{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:10px;
+  margin-bottom:10px;
+}
+.rightbar-title{ font-weight:900; }
+.rightbar-subtitle{ font-size:12px; color: var(--muted); margin-top:2px; }
+
+/* logs list */
+.logs{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
   overflow:auto;
-  max-height: 380px;
-  font-family: var(--mono);
-  font-size: 12px;
-  line-height: 1.5;
+  max-height: 260px; /* bottom panel scrolls */
+  padding-right:4px;
 }
-
-.list{
-  display:flex; flex-direction:column; gap:8px;
-}
-.list-item{
-  display:flex; align-items:center; justify-content:space-between; gap:10px;
-  padding:10px 10px;
-  border-radius: 12px;
-  border:1px solid var(--border);
-  background: rgba(255,255,255,0.03);
-}
-.list-item:hover{background: rgba(255,255,255,0.05)}
-.li-left{min-width:0}
-.li-title{font-weight:650; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
-.li-meta{font-size:12px; color:var(--muted); margin-top:2px}
-.li-actions{display:flex; gap:6px; flex-wrap:wrap}
-.li-actions button{padding:7px 10px; border-radius: 10px; font-size:12px}
-
 .log{
-  margin-top:10px;
-  display:flex; flex-direction:column; gap:8px;
-  max-height: 70vh;
-  overflow:auto;
-}
-.log-item{
-  padding:10px;
-  border-radius: 12px;
   border:1px solid var(--border);
-  background: rgba(255,255,255,0.03);
+  border-radius: 12px;
+  padding:10px;
+  background:#fff;
 }
-.log-item .t{font-size:12px; color:var(--muted); margin-bottom:4px}
-.log-item .b{font-family:var(--mono); font-size:12px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.log-top{
+  display:flex;
+  justify-content:space-between;
+  gap:8px;
+  font-size:12px;
+}
+.log-time{ color: var(--muted); }
+.log-line{
+  margin-top:6px;
+  font-family: var(--mono);
+  font-size:12px;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.log-badge{
+  font-size:12px;
+  padding:2px 8px;
+  border-radius:999px;
+  background:#eef2ff;
+  border:1px solid #c7d2fe;
+  color:#1e3a8a;
+}
+
+/* =========================================================
+   Creative improvement: Posts view uses single-column stacking
+   - avoids cramped 2-col layout for detail/create/edit
+   ========================================================= */
+#view-posts .grid-2{
+  grid-template-columns: 1fr;  /* 文章页强制单列，操作空间更大 */
+}
+#view-posts .card-body{
+  padding: 14px;
+}
+#view-posts #postsList{
+  max-height: 320px;           /* 列表区域单独滚动，响应区不挤 */
+  overflow: auto;
+  padding-right: 4px;
+  margin-bottom: 10px;
+}
+
+/* Make the action buttons area a bit more breathable on posts */
+#view-posts .post-actions .btn{
+  padding: 7px 10px;
+  font-size: 12px;
+  margin: 1px 2px;
+}
+
+/* =========================================================
+   Footer
+   ========================================================= */
+.footer{
+  padding:14px 16px;
+  color: var(--muted);
+  font-size:12px;
+  text-align:center;
+}
+
+/* =========================================================
+   Responsive
+   ========================================================= */
+@media (max-width: 980px){
+  .layout{
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "content"
+      "logs"
+      "sidebar";
+  }
+  .sidebar{
+    position: static;
+    top:auto;
+  }
+  #apiBaseInput, #apiBase, .api-base input{
+    width: 100%;
+    max-width: 100%;
+  }
+  .grid-2, .grid-3, .split{ grid-template-columns: 1fr; }
+}
+
+@media (max-width: 520px){
+  .navbar, .app-header{
+    padding:10px 12px;
+  }
+  .layout{ padding:12px; gap:12px; }
+}
+
+.posts-layout{display:grid;grid-template-columns:420px minmax(0,1fr);gap:14px;align-items:start}
+.posts-left,.posts-right{min-width:0}
+.posts-list-wrap{max-height:360px;overflow:auto;padding-right:4px;margin-bottom:10px}
+.drawer{margin:0 16px 16px}
+.drawer-summary{list-style:none;cursor:pointer;display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.drawer-summary::-webkit-details-marker{display:none}
+@media (max-width:980px){.posts-layout{grid-template-columns:1fr}}

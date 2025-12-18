@@ -108,80 +108,86 @@
         </div>
       </div>
 
-      <!-- POSTS -->
+      <!-- POSTS (re-layout: left list + right operations) -->
       <div id="tab-posts" class="tab">
         <h2>文章</h2>
 
-        <div class="card">
-          <div class="card-header">文章列表</div>
-          <p class="muted">接口：<span class="mono">GET /api/v1/posts</span>（公开）</p>
-          <div class="row">
-            <button id="btnListPosts" class="btn btn-primary">刷新列表</button>
-            <div class="muted small">点击列表项可自动填充详情/编辑/删除</div>
-          </div>
-          <div class="split">
-            <div>
-              <div id="postsList" class="list"></div>
-            </div>
-            <div>
-              <div class="subcard">
-                <div class="subheader">列表响应</div>
-                <pre id="postsListResp" class="pre"></pre>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="grid-3">
-          <div class="card">
-            <div class="card-header">文章详情</div>
-            <p class="muted">接口：<span class="mono">GET /api/v1/posts/:id</span>（公开）</p>
-            <form id="formGetPost" class="form">
-              <label>文章 ID
-                <input name="id" type="number" min="1" required />
-              </label>
-              <button class="btn btn-primary" type="submit">获取详情</button>
-            </form>
-            <pre id="postDetailResp" class="pre"></pre>
-          </div>
-
-          <div class="card">
-            <div class="card-header">创建文章</div>
-            <p class="muted">接口：<span class="mono">POST /api/v1/posts</span>（需要认证）</p>
-            <form id="formCreatePost" class="form">
-              <label>标题
-                <input name="title" required maxlength="200" />
-              </label>
-              <label>内容
-                <textarea name="content" rows="6" required></textarea>
-              </label>
-              <button class="btn btn-primary" type="submit">创建</button>
-            </form>
-            <pre id="createPostResp" class="pre"></pre>
-          </div>
-
-          <div class="card">
-            <div class="card-header">更新 / 删除文章</div>
-            <p class="muted">接口：<span class="mono">PUT /api/v1/posts/:id</span>（需要认证，仅作者）</p>
-            <p class="muted">接口：<span class="mono">DELETE /api/v1/posts/:id</span>（需要认证，仅作者）</p>
-
-            <form id="formUpdatePost" class="form">
-              <label>文章 ID
-                <input name="id" type="number" min="1" required />
-              </label>
-              <label>新标题（可留空不改）
-                <input name="title" maxlength="200" />
-              </label>
-              <label>新内容（可留空不改）
-                <textarea name="content" rows="4"></textarea>
-              </label>
+        <div class="posts-layout">
+          <!-- LEFT: list + response -->
+          <div class="posts-left">
+            <div class="card">
+              <div class="card-header">文章列表</div>
+              <p class="muted">接口：<span class="mono">GET /api/v1/posts</span>（公开）</p>
               <div class="row">
-                <button class="btn btn-primary" type="submit">更新</button>
-                <button id="btnDeletePost" class="btn btn-danger" type="button">删除</button>
+                <button id="btnListPosts" class="btn btn-primary">刷新列表</button>
+                <div class="muted small">点击列表项可自动填充详情/编辑/删除</div>
               </div>
-            </form>
 
-            <pre id="updatePostResp" class="pre"></pre>
+              <div class="posts-left-body">
+                <div class="posts-list-wrap">
+                  <div id="postsList" class="list"></div>
+                </div>
+
+                <div class="subcard">
+                  <div class="subheader">列表响应</div>
+                  <pre id="postsListResp" class="pre"></pre>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- RIGHT: detail / create / update-delete stacked -->
+          <div class="posts-right">
+            <div class="card">
+              <div class="card-header">文章详情</div>
+              <p class="muted">接口：<span class="mono">GET /api/v1/posts/:id</span>（公开）</p>
+              <form id="formGetPost" class="form">
+                <label>文章 ID
+                  <input name="id" type="number" min="1" required />
+                </label>
+                <button class="btn btn-primary" type="submit">获取详情</button>
+              </form>
+              <pre id="postDetailResp" class="pre"></pre>
+            </div>
+
+            <div class="card">
+              <div class="card-header">创建文章</div>
+              <p class="muted">接口：<span class="mono">POST /api/v1/posts</span>（需要认证）</p>
+              <form id="formCreatePost" class="form">
+                <label>标题
+                  <input name="title" required maxlength="200" />
+                </label>
+                <label>内容
+                  <textarea name="content" rows="8" required></textarea>
+                </label>
+                <button class="btn btn-primary" type="submit">创建</button>
+              </form>
+              <pre id="createPostResp" class="pre"></pre>
+            </div>
+
+            <div class="card">
+              <div class="card-header">更新 / 删除文章</div>
+              <p class="muted">接口：<span class="mono">PUT /api/v1/posts/:id</span>（需要认证，仅作者）</p>
+              <p class="muted">接口：<span class="mono">DELETE /api/v1/posts/:id</span>（需要认证，仅作者）</p>
+
+              <form id="formUpdatePost" class="form">
+                <label>文章 ID
+                  <input name="id" type="number" min="1" required />
+                </label>
+                <label>新标题（可留空不改）
+                  <input name="title" maxlength="200" />
+                </label>
+                <label>新内容（可留空不改）
+                  <textarea name="content" rows="6"></textarea>
+                </label>
+                <div class="row">
+                  <button class="btn btn-primary" type="submit">更新</button>
+                  <button id="btnDeletePost" class="btn btn-danger" type="button">删除</button>
+                </div>
+              </form>
+
+              <pre id="updatePostResp" class="pre"></pre>
+            </div>
           </div>
         </div>
       </div>
@@ -277,15 +283,22 @@
         </div>
       </div>
     </section>
-
-    <aside class="inspector">
-      <div class="card">
-        <div class="card-header">请求日志</div>
-        <div class="muted small">最近 20 条请求（用于自检）</div>
-        <div id="reqLog" class="log"></div>
-      </div>
-    </aside>
   </main>
+
+  <!-- Bottom drawer: Request Logs (keep #reqLog for app.js) -->
+  <details class="drawer inspector" open>
+    <summary class="drawer-summary">
+      <div>
+        <div style="font-weight:800;">请求日志</div>
+        <div class="muted small">最近 20 条请求（用于自检）</div>
+      </div>
+      <div class="muted small">点击收起/展开</div>
+    </summary>
+
+    <div class="card" style="margin-top:10px;">
+      <div id="reqLog" class="log"></div>
+    </div>
+  </details>
 
   <footer class="footer">
     <div class="muted small">本页面不依赖任何第三方库。建议使用本地静态服务器打开（见 README）。</div>

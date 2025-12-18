@@ -150,6 +150,10 @@
         btn.classList.add("active");
         const tabId = btn.getAttribute("data-tab");
         document.getElementById(tabId).classList.add("active");
+        const targetContent = document.getElementById(tabId);
+        if(targetContent) {
+          targetContent.scrollIntoView({behavior:'smooth', block:'start'})
+        }
       });
     });
   }
