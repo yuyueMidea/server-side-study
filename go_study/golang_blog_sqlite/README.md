@@ -54,3 +54,7 @@ go run ./cmd
 ```
 Authorization: Bearer <token>
 ```
+
+## 打包命令
+- go build -o golang-blog.exe .\cmd
+
