@@ -1,0 +1,1340 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Golang Blog API Tester</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    
+    :root {
+      --primary: #0d6efd;
+      --primary-hover: #0b5ed7;
+      --success: #198754;
+      --danger: #dc3545;
+      --warning: #ffc107;
+      --info: #0dcaf0;
+      --light: #f8f9fa;
+      --dark: #212529;
+      --border: #dee2e6;
+      --shadow: 0 0.125rem 0.25rem rgba(0,0,0,0.075);
+      --shadow-lg: 0 0.5rem 1rem rgba(0,0,0,0.15);
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background: #f5f7fa;
+      color: var(--dark);
+      line-height: 1.5;
+    }
+    
+    /* Header */
+    .header {
+      background: white;
+      border-bottom: 1px solid var(--border);
+      padding: 0.75rem 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      box-shadow: var(--shadow);
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+    }
+    
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    
+    .brand-logo {
+      width: 40px;
+      height: 40px;
+      background: linear-gradient(135deg, var(--primary), #0dcaf0);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: 700;
+      font-size: 18px;
+    }
+    
+    .brand-text h1 {
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: var(--dark);
+    }
+    
+    .brand-text p {
+      font-size: 0.75rem;
+      color: #6c757d;
+    }
+    
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+    
+    .api-base-group {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    
+    .api-base-group input {
+      width: 240px;
+      padding: 0.375rem 0.75rem;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 0.875rem;
+    }
+    
+    .token-info {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.375rem 0.75rem;
+      background: var(--light);
+      border-radius: 6px;
+      font-size: 0.875rem;
+    }
+    
+    .token-info .label {
+      color: #6c757d;
+      font-weight: 500;
+    }
+    
+    .token-info .value {
+      font-family: 'Courier New', monospace;
+      max-width: 200px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    
+    /* Main Layout */
+    .container {
+      display: flex;
+      height: calc(100vh - 65px);
+    }
+    
+    /* Sidebar */
+    .sidebar {
+      width: 240px;
+      background: white;
+      border-right: 1px solid var(--border);
+      padding: 1rem 0;
+      overflow-y: auto;
+    }
+    
+    .nav-section {
+      margin-bottom: 1.5rem;
+    }
+    
+    .nav-section-title {
+      padding: 0.5rem 1rem;
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: #6c757d;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.625rem 1rem;
+      color: var(--dark);
+      text-decoration: none;
+      cursor: pointer;
+      transition: all 0.2s;
+      border-left: 3px solid transparent;
+    }
+    
+    .nav-item:hover {
+      background: var(--light);
+    }
+    
+    .nav-item.active {
+      background: rgba(13, 110, 253, 0.1);
+      border-left-color: var(--primary);
+      color: var(--primary);
+      font-weight: 600;
+    }
+    
+    .nav-item-icon {
+      width: 20px;
+      height: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    /* Content */
+    .content {
+      flex: 1;
+      padding: 1.5rem;
+      overflow-y: auto;
+    }
+    
+    .page-header {
+      margin-bottom: 1.5rem;
+    }
+    
+    .page-header h2 {
+      font-size: 1.5rem;
+      font-weight: 600;
+      color: var(--dark);
+      margin-bottom: 0.25rem;
+    }
+    
+    .page-header p {
+      color: #6c757d;
+      font-size: 0.875rem;
+    }
+    
+    /* Card */
+    .card {
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      margin-bottom: 1.5rem;
+      box-shadow: var(--shadow);
+    }
+    
+    .card-header {
+      padding: 1rem 1.25rem;
+      border-bottom: 1px solid var(--border);
+      background: var(--light);
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    
+    .card-body {
+      padding: 1.25rem;
+    }
+    
+    /* Form */
+    .form-group {
+      margin-bottom: 1rem;
+    }
+    
+    .form-label {
+      display: block;
+      margin-bottom: 0.375rem;
+      font-weight: 500;
+      font-size: 0.875rem;
+      color: var(--dark);
+    }
+    
+    .form-control {
+      width: 100%;
+      padding: 0.5rem 0.75rem;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 0.875rem;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    
+    .form-control:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+    }
+    
+    textarea.form-control {
+      resize: vertical;
+      min-height: 100px;
+    }
+    
+    /* Buttons */
+    .btn {
+      padding: 0.5rem 1rem;
+      border: none;
+      border-radius: 6px;
+      font-size: 0.875rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    
+    .btn-primary {
+      background: var(--primary);
+      color: white;
+    }
+    
+    .btn-primary:hover {
+      background: var(--primary-hover);
+    }
+    
+    .btn-success {
+      background: var(--success);
+      color: white;
+    }
+    
+    .btn-danger {
+      background: var(--danger);
+      color: white;
+    }
+    
+    .btn-secondary {
+      background: #6c757d;
+      color: white;
+    }
+    
+    .btn-sm {
+      padding: 0.25rem 0.5rem;
+      font-size: 0.75rem;
+    }
+    
+    .btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+    
+    /* Table */
+    .table-responsive {
+      overflow-x: auto;
+    }
+    
+    .table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.875rem;
+    }
+    
+    .table thead {
+      background: var(--light);
+    }
+    
+    .table th {
+      padding: 0.75rem;
+      text-align: left;
+      font-weight: 600;
+      color: var(--dark);
+      border-bottom: 2px solid var(--border);
+    }
+    
+    .table td {
+      padding: 0.75rem;
+      border-bottom: 1px solid var(--border);
+    }
+    
+    .table tbody tr:hover {
+      background: #f8f9fa;
+    }
+    
+    /* Pagination */
+    .pagination {
+      display: flex;
+      gap: 0.25rem;
+      justify-content: center;
+      margin-top: 1rem;
+    }
+    
+    .pagination button {
+      padding: 0.375rem 0.75rem;
+      border: 1px solid var(--border);
+      background: white;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.875rem;
+    }
+    
+    .pagination button:hover:not(:disabled) {
+      background: var(--light);
+    }
+    
+    .pagination button.active {
+      background: var(--primary);
+      color: white;
+      border-color: var(--primary);
+    }
+    
+    .pagination button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    
+    /* Response Block */
+    .response-block {
+      background: #f8f9fa;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 1rem;
+      font-family: 'Courier New', monospace;
+      font-size: 0.813rem;
+      white-space: pre-wrap;
+      word-break: break-word;
+      max-height: 400px;
+      overflow-y: auto;
+      margin-top: 1rem;
+    }
+    
+    /* Grid */
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 1.5rem;
+    }
+    
+    /* Badge */
+    .badge {
+      display: inline-block;
+      padding: 0.25rem 0.5rem;
+      font-size: 0.75rem;
+      font-weight: 600;
+      border-radius: 4px;
+    }
+    
+    .badge-success {
+      background: #d1e7dd;
+      color: #0f5132;
+    }
+    
+    .badge-danger {
+      background: #f8d7da;
+      color: #842029;
+    }
+    
+    /* Log Drawer */
+    .log-drawer {
+      position: fixed;
+      bottom: 0;
+      left: 240px;
+      right: 0;
+      background: white;
+      border-top: 1px solid var(--border);
+      box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+      max-height: 300px;
+      overflow-y: auto;
+      z-index: 999;
+      transition: transform 0.3s;
+    }
+    
+    .log-drawer.collapsed {
+      transform: translateY(calc(100% - 40px));
+    }
+    
+    .log-header {
+      padding: 0.75rem 1.25rem;
+      background: var(--light);
+      border-bottom: 1px solid var(--border);
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-weight: 600;
+    }
+    
+    .log-content {
+      padding: 1rem 1.25rem;
+    }
+    
+    .log-item {
+      padding: 0.5rem;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.813rem;
+    }
+    
+    .log-item:last-child {
+      border-bottom: none;
+    }
+    
+    .log-item .t {
+      font-family: 'Courier New', monospace;
+      color: #6c757d;
+    }
+    
+    .log-item .b {
+      color: var(--dark);
+      margin-top: 0.25rem;
+    }
+    
+    /* Utility */
+    .text-muted {
+      color: #6c757d;
+    }
+    
+    .text-small {
+      font-size: 0.813rem;
+    }
+    
+    .mb-3 {
+      margin-bottom: 1rem;
+    }
+    
+    .d-flex {
+      display: flex;
+    }
+    
+    .gap-2 {
+      gap: 0.5rem;
+    }
+    
+    .hidden {
+      display: none;
+    }
+    
+    /* Responsive */
+    @media (max-width: 768px) {
+      .container {
+        flex-direction: column;
+      }
+      
+      .sidebar {
+        width: 100%;
+        border-right: none;
+        border-bottom: 1px solid var(--border);
+      }
+      
+      .grid-2 {
+        grid-template-columns: 1fr;
+      }
+      
+      .log-drawer {
+        left: 0;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Header -->
+  <div class="header">
+    <div class="brand">
+      <div class="brand-logo">GB</div>
+      <div class="brand-text">
+        <h1>Golang Blog API Tester</h1>
+        <p>Gin + GORM + SQLite</p>
+      </div>
+    </div>
+    
+    <div class="header-right">
+      <div class="api-base-group">
+        <label class="text-small text-muted">API Base:</label>
+        <input type="text" id="apiBase" placeholder="http://localhost:8080">
+        <button class="btn btn-sm btn-primary" id="btnSaveBase">保存</button>
+      </div>
+      
+      <div class="token-info">
+        <span class="label">Token:</span>
+        <span class="value" id="tokenState">未登录</span>
+      </div>
+      
+      <button class="btn btn-sm btn-secondary" id="btnLogout">退出</button>
+    </div>
+  </div>
+  
+  <!-- Main Container -->
+  <div class="container">
+    <!-- Sidebar -->
+    <div class="sidebar">
+      <div class="nav-section">
+        <div class="nav-section-title">系统</div>
+        <div class="nav-item active" data-tab="health">
+          <span class="nav-item-icon">✓</span>
+          <span>健康检查</span>
+        </div>
+      </div>
+      
+      <div class="nav-section">
+        <div class="nav-section-title">认证</div>
+        <div class="nav-item" data-tab="auth">
+          <span class="nav-item-icon">👤</span>
+          <span>用户注册/登录</span>
+        </div>
+      </div>
+      
+      <div class="nav-section">
+        <div class="nav-section-title">内容管理</div>
+        <div class="nav-item" data-tab="posts">
+          <span class="nav-item-icon">📝</span>
+          <span>文章管理</span>
+        </div>
+        <div class="nav-item" data-tab="comments">
+          <span class="nav-item-icon">💬</span>
+          <span>评论管理</span>
+        </div>
+      </div>
+      
+      <div class="nav-section">
+        <div class="nav-section-title">工具</div>
+        <div class="nav-item" data-tab="console">
+          <span class="nav-item-icon">⚡</span>
+          <span>API 控制台</span>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Content -->
+    <div class="content">
+      <!-- Health Tab -->
+      <div id="tab-health" class="tab-content">
+        <div class="page-header">
+          <h2>健康检查</h2>
+          <p class="text-muted">接口: GET /health</p>
+        </div>
+        
+        <div class="card">
+          <div class="card-body">
+            <button class="btn btn-primary" id="btnHealth">执行健康检查</button>
+            <div id="healthHint" class="badge badge-secondary mt-2">尚未执行</div>
+            <div class="response-block" id="healthResp">等待执行...</div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Auth Tab -->
+      <div id="tab-auth" class="tab-content hidden">
+        <div class="page-header">
+          <h2>认证与用户</h2>
+          <p class="text-muted">用户注册和登录功能</p>
+        </div>
+        
+        <div class="grid-2">
+          <div class="card">
+            <div class="card-header">注册</div>
+            <div class="card-body">
+              <p class="text-muted text-small mb-3">接口: POST /api/v1/auth/register</p>
+              <form id="formRegister">
+                <div class="form-group">
+                  <label class="form-label">用户名</label>
+                  <input type="text" class="form-control" name="username" required minlength="3" maxlength="32">
+                </div>
+                <div class="form-group">
+                  <label class="form-label">邮箱</label>
+                  <input type="email" class="form-control" name="email" required maxlength="128">
+                </div>
+                <div class="form-group">
+                  <label class="form-label">密码</label>
+                  <input type="password" class="form-control" name="password" required minlength="6" maxlength="72">
+                </div>
+                <button type="submit" class="btn btn-primary">注册</button>
+              </form>
+              <div class="response-block" id="registerResp"></div>
+            </div>
+          </div>
+          
+          <div class="card">
+            <div class="card-header">登录</div>
+            <div class="card-body">
+              <p class="text-muted text-small mb-3">接口: POST /api/v1/auth/login</p>
+              <form id="formLogin">
+                <div class="form-group">
+                  <label class="form-label">用户名或邮箱</label>
+                  <input type="text" class="form-control" name="identifier" required>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">密码</label>
+                  <input type="password" class="form-control" name="password" required>
+                </div>
+                <div class="d-flex gap-2">
+                  <button type="submit" class="btn btn-primary">登录</button>
+                  <button type="button" class="btn btn-secondary" id="btnProfile">获取 Profile</button>
+                </div>
+              </form>
+              <div class="response-block" id="loginResp"></div>
+              <div class="response-block hidden" id="profileResp"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Posts Tab -->
+      <div id="tab-posts" class="tab-content hidden">
+        <div class="page-header">
+          <h2>文章管理</h2>
+          <p class="text-muted">创建、查看、编辑和删除文章</p>
+        </div>
+        
+        <div class="card">
+          <div class="card-header">
+            <span>文章列表</span>
+            <button class="btn btn-sm btn-primary" id="btnListPosts">刷新列表</button>
+          </div>
+          <div class="card-body">
+            <p class="text-muted text-small mb-3">接口: GET /api/v1/posts (公开)</p>
+            <div class="table-responsive">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>标题</th>
+                    <th>作者ID</th>
+                    <th>创建时间</th>
+                    <th>操作</th>
+                  </tr>
+                </thead>
+                <tbody id="postsTableBody">
+                  <tr>
+                    <td colspan="5" class="text-muted">暂无数据，点击刷新列表加载</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="pagination" id="postsPagination"></div>
+          </div>
+        </div>
+        
+        <div class="grid-2">
+          <div class="card">
+            <div class="card-header">创建文章</div>
+            <div class="card-body">
+              <p class="text-muted text-small mb-3">接口: POST /api/v1/posts (需要认证)</p>
+              <form id="formCreatePost">
+                <div class="form-group">
+                  <label class="form-label">标题</label>
+                  <input type="text" class="form-control" name="title" required maxlength="200">
+                </div>
+                <div class="form-group">
+                  <label class="form-label">内容</label>
+                  <textarea class="form-control" name="content" required></textarea>
+                </div>
+                <button type="submit" class="btn btn-success">创建文章</button>
+              </form>
+              <div class="response-block" id="createPostResp"></div>
+            </div>
+          </div>
+          
+          <div class="card">
+            <div class="card-header">编辑/删除文章</div>
+            <div class="card-body">
+              <p class="text-muted text-small mb-3">接口: PUT/DELETE /api/v1/posts/:id (需要认证)</p>
+              <form id="formUpdatePost">
+                <div class="form-group">
+                  <label class="form-label">文章 ID</label>
+                  <input type="number" class="form-control" name="id" required min="1">
+                </div>
+                <div class="form-group">
+                  <label class="form-label">新标题</label>
+                  <input type="text" class="form-control" name="title" maxlength="200">
+                </div>
+                <div class="form-group">
+                  <label class="form-label">新内容</label>
+                  <textarea class="form-control" name="content"></textarea>
+                </div>
+                <div class="d-flex gap-2">
+                  <button type="submit" class="btn btn-primary">更新</button>
+                  <button type="button" class="btn btn-danger" id="btnDeletePost">删除</button>
+                </div>
+              </form>
+              <div class="response-block" id="updatePostResp"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Comments Tab -->
+      <div id="tab-comments" class="tab-content hidden">
+        <div class="page-header">
+          <h2>评论管理</h2>
+          <p class="text-muted">查看和创建文章评论</p>
+        </div>
+        
+        <div class="grid-2">
+          <div class="card">
+            <div class="card-header">获取文章评论</div>
+            <div class="card-body">
+              <p class="text-muted text-small mb-3">接口: GET /api/v1/comments/post/:post_id (公开)</p>
+              <form id="formListComments">
+                <div class="form-group">
+                  <label class="form-label">文章 ID</label>
+                  <input type="number" class="form-control" name="post_id" required min="1">
+                </div>
+                <button type="submit" class="btn btn-primary">获取评论</button>
+              </form>
+              <div class="response-block" id="listCommentsResp"></div>
+            </div>
+          </div>
+          
+          <div class="card">
+            <div class="card-header">创建评论</div>
+            <div class="card-body">
+              <p class="text-muted text-small mb-3">接口: POST /api/v1/posts/:post_id/comments (需要认证)</p>
+              <form id="formCreateComment">
+                <div class="form-group">
+                  <label class="form-label">文章 ID</label>
+                  <input type="number" class="form-control" name="post_id" required min="1">
+                </div>
+                <div class="form-group">
+                  <label class="form-label">评论内容</label>
+                  <textarea class="form-control" name="content" required></textarea>
+                </div>
+                <button type="submit" class="btn btn-success">创建评论</button>
+              </form>
+              <div class="response-block" id="createCommentResp"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Console Tab -->
+      <div id="tab-console" class="tab-content hidden">
+        <div class="page-header">
+          <h2>API 控制台</h2>
+          <p class="text-muted">快速验证任意接口</p>
+        </div>
+        
+        <div class="card">
+          <div class="card-header">自定义请求</div>
+          <div class="card-body">
+            <div class="grid-2 mb-3">
+              <div class="form-group">
+                <label class="form-label">Method</label>
+                <select class="form-control" id="customMethod">
+                  <option>GET</option>
+                  <option>POST</option>
+                  <option>PUT</option>
+                  <option>DELETE</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Path</label>
+                <input type="text" class="form-control" id="customPath" placeholder="/health or /api/v1/posts">
+              </div>
+            </div>
+            
+            <div class="form-group">
+              <label class="form-label">Auth Mode</label>
+              <select class="form-control" id="customAuth">
+                <option value="auto">自动 (若有 token 则带上)</option>
+                <option value="none">不带认证</option>
+                <option value="force">强制带认证 (无 token 会报错)</option>
+              </select>
+            </div>
+            
+            <div class="form-group">
+              <label class="form-label">JSON Body (GET/DELETE 可留空)</label>
+              <textarea class="form-control" id="customBody" placeholder='{"title":"Hello","content":"..."}'></textarea>
+            </div>
+            
+            <div class="d-flex gap-2">
+              <button class="btn btn-primary" id="btnCustomSend">发送请求</button>
+              <button class="btn btn-secondary" id="btnRunSmoke">一键冒烟测试</button>
+            </div>
+            
+            <div class="response-block" id="customResp"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Log Drawer -->
+  <div class="log-drawer" id="logDrawer">
+    <div class="log-header" id="logToggle">
+      <span>📋 请求日志 (最近 20 条)</span>
+      <span>点击收起/展开</span>
+    </div>
+    <div class="log-content" id="reqLog"></div>
+  </div>
+  
+  <script>
+    (() => {
+      const $ = (sel) => document.querySelector(sel);
+      const $$ = (sel) => document.querySelectorAll(sel);
+      
+      const storage = {
+        get(key, fallback = null) {
+          try {
+            const v = localStorage.getItem(key);
+            return v ?? fallback;
+          } catch {
+            return fallback;
+          }
+        },
+        set(key, value) {
+          try {
+            localStorage.setItem(key, value);
+          } catch {}
+        },
+        del(key) {
+          try {
+            localStorage.removeItem(key);
+          } catch {}
+        }
+      };
+      
+      const state = {
+        apiBase: storage.get("apiBase", "http://localhost:8080"),
+        token: storage.get("token", ""),
+        requestLog: [],
+        postsData: [],
+        currentPage: 1,
+        pageSize: 10
+      };
+      
+      function setText(el, text) {
+        if (el) el.textContent = text ?? "";
+      }
+      
+      function pretty(obj) {
+        if (obj === undefined) return "";
+        if (typeof obj === "string") return obj;
+        try {
+          return JSON.stringify(obj, null, 2);
+        } catch {
+          return String(obj);
+        }
+      }
+      
+      function normalizeBase(url) {
+        if (!url) return "http://localhost:8080";
+        url = url.trim();
+        return url.replace(/\/+$/, "");
+      }
+      
+      function nowTime() {
+        const d = new Date();
+        const hh = String(d.getHours()).padStart(2, "0");
+        const mm = String(d.getMinutes()).padStart(2, "0");
+        const ss = String(d.getSeconds()).padStart(2, "0");
+        return `${hh}:${mm}:${ss}`;
+      }
+      
+      function pushLog(entry) {
+        state.requestLog.unshift(entry);
+        state.requestLog = state.requestLog.slice(0, 20);
+        renderLog();
+      }
+      
+      function renderLog() {
+        const box = $("#reqLog");
+        box.innerHTML = "";
+        for (const it of state.requestLog) {
+          const div = document.createElement("div");
+          div.className = "log-item";
+          const t = document.createElement("div");
+          t.className = "t";
+          t.textContent = `${it.time} · ${it.status} · ${it.method} ${it.path}`;
+          const b = document.createElement("div");
+          b.className = "b";
+          b.textContent = it.note || "";
+          div.appendChild(t);
+          div.appendChild(b);
+          box.appendChild(div);
+        }
+      }
+      
+      function tokenShort() {
+        if (!state.token) return "未登录";
+        return state.token.length > 24 ? `${state.token.slice(0, 10)}...${state.token.slice(-10)}` : state.token;
+      }
+      
+      function updateTokenUI() {
+        setText($("#tokenState"), tokenShort());
+        $("#btnLogout").disabled = !state.token;
+      }
+      
+      function setToken(token) {
+        state.token = token || "";
+        if (state.token) storage.set("token", state.token);
+        else storage.del("token");
+        updateTokenUI();
+      }
+      
+      function parseJsonSafe(txt) {
+        if (!txt) return null;
+        try {
+          return JSON.parse(txt);
+        } catch {
+          return null;
+        }
+      }
+      
+      function extractToken(respJson) {
+        if (!respJson) return "";
+        if (typeof respJson === "string") return "";
+        if (respJson.token && typeof respJson.token === "string") return respJson.token;
+        const d = respJson.data;
+        if (d && typeof d === "object" && d.token && typeof d.token === "string") return d.token;
+        if (respJson.data && respJson.data.data && respJson.data.data.token) return respJson.data.data.token;
+        return "";
+      }
+      
+      async function apiFetch(method, path, body, authMode = "auto") {
+        const base = normalizeBase(state.apiBase);
+        const url = `${base}${path.startsWith("/") ? "" : "/"}${path}`;
+        
+        const headers = { "Accept": "application/json" };
+        const hasBody = body !== undefined && body !== null && method !== "GET" && method !== "DELETE";
+        if (hasBody) headers["Content-Type"] = "application/json";
+        
+        const token = state.token;
+        const shouldAuth = authMode === "force" ? true : authMode === "none" ? false : !!token;
+        
+        if (shouldAuth) {
+          if (!token && authMode === "force") {
+            throw new Error("强制认证模式但当前没有 token，请先登录。");
+          }
+          if (token) headers["Authorization"] = `Bearer ${token}`;
+        }
+        
+        const options = { method, headers };
+        if (hasBody) options.body = JSON.stringify(body);
+        
+        let res, text, json;
+        let status = 0;
+        try {
+          res = await fetch(url, options);
+          status = res.status;
+          text = await res.text();
+          json = parseJsonSafe(text);
+        } catch (err) {
+          pushLog({ time: nowTime(), method, path, status: "ERR", note: String(err?.message || err) });
+          throw err;
+        }
+        
+        const note = json ? (json.message || json.error || "") : (text?.slice(0, 120) || "");
+        pushLog({ time: nowTime(), method, path, status, note });
+        
+        return { status, ok: res.ok, text, json };
+      }
+      
+      function getFormJSON(form) {
+        const data = {};
+        new FormData(form).forEach((v, k) => data[k] = typeof v === "string" ? v : String(v));
+        for (const k of Object.keys(data)) {
+          if (typeof data[k] === "string") data[k] = data[k].trim();
+        }
+        return data;
+      }
+      
+      function renderPostsTable() {
+        const tbody = $("#postsTableBody");
+        tbody.innerHTML = "";
+        
+        if (!state.postsData || state.postsData.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="5" class="text-muted">暂无文章数据</td></tr>';
+          return;
+        }
+        
+        const start = (state.currentPage - 1) * state.pageSize;
+        const end = start + state.pageSize;
+        const pageData = state.postsData.slice(start, end);
+        
+        for (const p of pageData) {
+          const id = p.id ?? p.ID ?? p.Id;
+          const title = p.title ?? p.Title ?? "(无标题)";
+          const userId = p.user_id ?? p.UserID ?? p.userId ?? "";
+          const createdAt = p.created_at ?? p.CreatedAt ?? "";
+          
+          const tr = document.createElement("tr");
+          tr.innerHTML = `
+            <td>${id}</td>
+            <td>${title}</td>
+            <td>${userId}</td>
+            <td>${createdAt ? String(createdAt).slice(0, 19) : "-"}</td>
+            <td>
+              <button class="btn btn-sm btn-primary" onclick="viewPost(${id})">查看</button>
+              <button class="btn btn-sm btn-secondary" onclick="fillEdit(${id})">编辑</button>
+              <button class="btn btn-sm btn-danger" onclick="deletePost(${id})">删除</button>
+            </td>
+          `;
+          tbody.appendChild(tr);
+        }
+        
+        renderPagination();
+      }
+      
+      function renderPagination() {
+        const pagination = $("#postsPagination");
+        pagination.innerHTML = "";
+        
+        if (!state.postsData || state.postsData.length === 0) return;
+        
+        const totalPages = Math.ceil(state.postsData.length / state.pageSize);
+        
+        const prevBtn = document.createElement("button");
+        prevBtn.textContent = "‹ 上一页";
+        prevBtn.disabled = state.currentPage === 1;
+        prevBtn.onclick = () => {
+          if (state.currentPage > 1) {
+            state.currentPage--;
+            renderPostsTable();
+          }
+        };
+        pagination.appendChild(prevBtn);
+        
+        for (let i = 1; i <= totalPages; i++) {
+          const btn = document.createElement("button");
+          btn.textContent = i;
+          btn.className = i === state.currentPage ? "active" : "";
+          btn.onclick = () => {
+            state.currentPage = i;
+            renderPostsTable();
+          };
+          pagination.appendChild(btn);
+        }
+        
+        const nextBtn = document.createElement("button");
+        nextBtn.textContent = "下一页 ›";
+        nextBtn.disabled = state.currentPage === totalPages;
+        nextBtn.onclick = () => {
+          if (state.currentPage < totalPages) {
+            state.currentPage++;
+            renderPostsTable();
+          }
+        };
+        pagination.appendChild(nextBtn);
+      }
+      
+      window.viewPost = async (id) => {
+        const r = await apiFetch("GET", `/api/v1/posts/${id}`, null, "none");
+        alert(`文章详情:\n\n${pretty(r.json || r.text)}`);
+      };
+      
+      window.fillEdit = (id) => {
+        $("#formUpdatePost").elements["id"].value = id;
+        const tab = $('[data-tab="posts"]');
+        if (tab) {
+          $$(".nav-item").forEach(n => n.classList.remove("active"));
+          tab.classList.add("active");
+          $$(".tab-content").forEach(t => t.classList.add("hidden"));
+          $("#tab-posts").classList.remove("hidden");
+        }
+      };
+      
+      window.deletePost = async (id) => {
+        if (!confirm(`确认删除文章 #${id}？`)) return;
+        const r = await apiFetch("DELETE", `/api/v1/posts/${id}`, null, "force");
+        alert(pretty(r.json || r.text));
+        await doListPosts();
+      };
+      
+      async function doHealth() {
+        const hint = $("#healthHint");
+        hint.textContent = "请求中...";
+        hint.className = "badge badge-secondary mt-2";
+        try {
+          const r = await apiFetch("GET", "/health");
+          setText($("#healthResp"), r.json ? pretty(r.json) : r.text);
+          hint.textContent = r.ok ? "✓ OK" : `✗ HTTP ${r.status}`;
+          hint.className = r.ok ? "badge badge-success mt-2" : "badge badge-danger mt-2";
+        } catch (err) {
+          hint.textContent = "✗ 失败";
+          hint.className = "badge badge-danger mt-2";
+          setText($("#healthResp"), String(err?.message || err));
+        }
+      }
+      
+      async function doRegister(payload) {
+        const r = await apiFetch("POST", "/api/v1/auth/register", payload, "none");
+        setText($("#registerResp"), r.json ? pretty(r.json) : r.text);
+        return r;
+      }
+      
+      async function doLogin(payload) {
+        const r = await apiFetch("POST", "/api/v1/auth/login", payload, "none");
+        setText($("#loginResp"), r.json ? pretty(r.json) : r.text);
+        const tok = extractToken(r.json);
+        if (r.ok && tok) {
+          setToken(tok);
+        }
+        return r;
+      }
+      
+      async function doProfile() {
+        const r = await apiFetch("GET", "/api/v1/profile", null, "force");
+        const el = $("#profileResp");
+        el.classList.remove("hidden");
+        setText(el, r.json ? pretty(r.json) : r.text);
+        return r;
+      }
+      
+      async function doListPosts() {
+        const r = await apiFetch("GET", "/api/v1/posts", null, "none");
+        let list = null;
+        if (Array.isArray(r.json)) list = r.json;
+        else if (r.json && Array.isArray(r.json.data)) list = r.json.data;
+        else if (r.json && r.json.data && Array.isArray(r.json.data.items)) list = r.json.data.items;
+        else if (r.json && Array.isArray(r.json.posts)) list = r.json.posts;
+        
+        state.postsData = list || [];
+        state.currentPage = 1;
+        renderPostsTable();
+        return r;
+      }
+      
+      async function doCreatePost(payload) {
+        const r = await apiFetch("POST", "/api/v1/posts", payload, "force");
+        setText($("#createPostResp"), r.json ? pretty(r.json) : r.text);
+        return r;
+      }
+      
+      async function doUpdatePost(id, payload) {
+        const r = await apiFetch("PUT", `/api/v1/posts/${id}`, payload, "force");
+        setText($("#updatePostResp"), r.json ? pretty(r.json) : r.text);
+        return r;
+      }
+      
+      async function doListComments(postId) {
+        const r = await apiFetch("GET", `/api/v1/comments/post/${postId}`, null, "none");
+        setText($("#listCommentsResp"), r.json ? pretty(r.json) : r.text);
+        return r;
+      }
+      
+      async function doCreateComment(postId, payload) {
+        const r = await apiFetch("POST", `/api/v1/posts/${postId}/comments`, payload, "force");
+        setText($("#createCommentResp"), r.json ? pretty(r.json) : r.text);
+        return r;
+      }
+      
+      async function doCustomSend() {
+        const method = $("#customMethod").value;
+        let path = $("#customPath").value.trim();
+        if (!path) path = "/health";
+        const auth = $("#customAuth").value;
+        const bodyText = $("#customBody").value.trim();
+        
+        let body = null;
+        if (method !== "GET" && method !== "DELETE") {
+          if (bodyText) {
+            const parsed = parseJsonSafe(bodyText);
+            if (!parsed) {
+              setText($("#customResp"), "JSON Body 解析失败，请检查格式。");
+              return;
+            }
+            body = parsed;
+          } else {
+            body = {};
+          }
+        }
+        
+        try {
+          const r = await apiFetch(method, path, body, auth);
+          setText($("#customResp"), r.json ? pretty(r.json) : r.text);
+        } catch (err) {
+          setText($("#customResp"), String(err?.message || err));
+        }
+      }
+      
+      async function doSmoke() {
+        try {
+          const r1 = await apiFetch("GET", "/health", null, "none");
+          const r2 = await apiFetch("GET", "/api/v1/posts", null, "none");
+          setText($("#customResp"), pretty({ 
+            health: r1.json || r1.text, 
+            posts: r2.json || r2.text 
+          }));
+        } catch (err) {
+          setText($("#customResp"), `失败: ${String(err?.message || err)}`);
+        }
+      }
+      
+      function bindUI() {
+        $("#apiBase").value = state.apiBase;
+        $("#btnSaveBase").addEventListener("click", () => {
+          state.apiBase = normalizeBase($("#apiBase").value);
+          storage.set("apiBase", state.apiBase);
+          pushLog({ time: nowTime(), method: "-", path: "-", status: "INFO", note: `API Base set to ${state.apiBase}` });
+        });
+        
+        $("#btnLogout").addEventListener("click", () => {
+          setToken("");
+          setText($("#profileResp"), "");
+          pushLog({ time: nowTime(), method: "-", path: "-", status: "INFO", note: "Logged out" });
+        });
+        
+        $("#btnHealth").addEventListener("click", doHealth);
+        
+        $("#formRegister").addEventListener("submit", async (e) => {
+          e.preventDefault();
+          await doRegister(getFormJSON(e.target));
+        });
+        
+        $("#formLogin").addEventListener("submit", async (e) => {
+          e.preventDefault();
+          await doLogin(getFormJSON(e.target));
+        });
+        
+        $("#btnProfile").addEventListener("click", doProfile);
+        
+        $("#btnListPosts").addEventListener("click", doListPosts);
+        
+        $("#formCreatePost").addEventListener("submit", async (e) => {
+          e.preventDefault();
+          await doCreatePost(getFormJSON(e.target));
+          await doListPosts();
+          e.target.reset();
+        });
+        
+        $("#formUpdatePost").addEventListener("submit", async (e) => {
+          e.preventDefault();
+          const id = e.target.elements["id"].value;
+          const title = e.target.elements["title"].value.trim();
+          const content = e.target.elements["content"].value.trim();
+          const payload = {};
+          if (title) payload.title = title;
+          if (content) payload.content = content;
+          if (Object.keys(payload).length === 0) {
+            setText($("#updatePostResp"), "请至少填写 title 或 content 之一用于更新。");
+            return;
+          }
+          await doUpdatePost(id, payload);
+          await doListPosts();
+        });
+        
+        $("#btnDeletePost").addEventListener("click", async () => {
+          const id = $("#formUpdatePost").elements["id"].value;
+          if (!id) {
+            alert("请先填写文章 ID");
+            return;
+          }
+          await deletePost(id);
+        });
+        
+        $("#formListComments").addEventListener("submit", async (e) => {
+          e.preventDefault();
+          const postId = e.target.elements["post_id"].value;
+          await doListComments(postId);
+        });
+        
+        $("#formCreateComment").addEventListener("submit", async (e) => {
+          e.preventDefault();
+          const postId = e.target.elements["post_id"].value;
+          const payload = getFormJSON(e.target);
+          await doCreateComment(postId, { content: payload.content });
+          await doListComments(postId);
+          e.target.reset();
+        });
+        
+        $("#btnCustomSend").addEventListener("click", doCustomSend);
+        $("#btnRunSmoke").addEventListener("click", doSmoke);
+        
+        $$(".nav-item").forEach(item => {
+          item.addEventListener("click", () => {
+            const tab = item.getAttribute("data-tab");
+            $$(".nav-item").forEach(n => n.classList.remove("active"));
+            item.classList.add("active");
+            $$(".tab-content").forEach(t => t.classList.add("hidden"));
+            $(`#tab-${tab}`).classList.remove("hidden");
+          });
+        });
+        
+        $("#logToggle").addEventListener("click", () => {
+          $("#logDrawer").classList.toggle("collapsed");
+        });
+      }
+      
+      function init() {
+        bindUI();
+        updateTokenUI();
+        pushLog({ time: nowTime(), method: "-", path: "-", status: "INFO", note: `Loaded. API Base=${state.apiBase}` });
+      }
+      
+      window.addEventListener("DOMContentLoaded", init);
+    })();
+  </script>
+</body>
+</html>
