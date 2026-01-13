@@ -69,7 +69,6 @@ system-monitor/
 ├── src/                    # React 前端源码
 │   ├── App.jsx            # 主应用组件
 │   ├── main.jsx           # 入口文件
-│   └── components/        # 各功能组件
 ├── src-tauri/             # Rust 后端源码
 │   ├── src/
 │   │   ├── main.rs       # 主入口
