@@ -1,0 +1,33 @@
+[package]
+name = "voice-to-text-app"
+version = "1.0.0"
+description = "A voice to text application"
+authors = ["you"]
+license = ""
+repository = ""
+edition = "2021"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = ["tray-icon"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# v2 默认模板常用插件（你 lib.rs 里已经在用 opener）
+tauri-plugin-opener = "2"
+
+# 这些插件用于替代 v1 allowlist（建议先都加上，避免前端调用时权限/插件缺失）
+tauri-plugin-shell = "2"
+tauri-plugin-dialog = "2"
+tauri-plugin-fs = "2"
+tauri-plugin-clipboard-manager = "2"
+tauri-plugin-notification = "2"
+
+# 全局快捷键插件（仅桌面）
+[target."cfg(not(any(target_os = \"android\", target_os = \"ios\")))".dependencies]
+tauri-plugin-global-shortcut = "2"
+
+[features]
+custom-protocol = ["tauri/custom-protocol"]
