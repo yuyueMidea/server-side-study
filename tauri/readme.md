@@ -286,6 +286,8 @@ npm run tauri build
 src-tauri/target/release/bundle/
 ```
 
+替换icon图标的指令: `pnpm tauri icon src-tauri/icons/xxxxxxx.png`
+
 不同平台生成不同格式：
 
 * Windows：`.msi`
