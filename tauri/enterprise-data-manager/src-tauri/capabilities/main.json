@@ -1,0 +1,28 @@
+{
+  "identifier": "main-capability",
+  "description": "Main application capability",
+  "windows": ["*"],
+  "permissions": [
+    "core:default",
+    "core:window:allow-create",
+    "core:window:allow-close",
+    "core:app:allow-version",
+    "core:app:allow-name",
+    "dialog:allow-open",
+    "dialog:allow-save",
+    "fs:allow-read-text-file",
+    "fs:allow-write-text-file",
+    "fs:allow-read-dir",
+    "fs:allow-exists",
+    "fs:allow-create",
+    "fs:allow-remove",
+    "fs:default",
+    {
+      "identifier": "fs:scope",
+      "allow": [
+        { "path": "$APPDATA/*" },
+        { "path": "$APPDATA/**/*" }
+      ]
+    }
+  ]
+}
