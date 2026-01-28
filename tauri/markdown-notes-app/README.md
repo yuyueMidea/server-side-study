@@ -60,6 +60,10 @@
 # 安装前端依赖
 npm install
 
+安装 typography 插件
+
+npm install -D @tailwindcss/typography
+
 # 如果需要安装 Tauri CLI
 npm install -g @tauri-apps/cli
 ```
