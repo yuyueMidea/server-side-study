@@ -1,30 +1,11 @@
-import { useState, useMemo } from 'react';
-import { Button, Input, SearchInput, Select, Card, Table, Modal, Avatar, StatusBadge, Pagination, ConfirmDialog } from '@/components/common';
+import { useState, useEffect, useMemo, useCallback } from 'react';
+import { Button, Input, SearchInput, Select, Card, Table, Modal, Avatar, StatusBadge, Pagination, ConfirmDialog, Loading } from '@/components/common';
 import { useCustomerStore } from '@/store';
 import { useModal, usePagination, useForm } from '@/hooks';
 import { formatDate, formatCurrency } from '@/utils';
+import { customerService } from '@/services/tauri';
 import { Plus, Download, Upload, Edit, Trash2, Eye, Phone, Mail } from 'lucide-react';
-import type { Customer, CustomerCategory, CustomerStatus } from '@/types';
-
-// 模拟数据
-const mockCustomers: Customer[] = Array.from({ length: 50 }, (_, i) => ({
-  id: `cust-${i + 1}`,
-  name: `客户 ${i + 1}`,
-  company: ['科技有限公司', '贸易股份', '信息技术', '网络科技', '软件开发'][i % 5],
-  email: `customer${i + 1}@example.com`,
-  phone: `138${String(i).padStart(8, '0')}`,
-  address: `北京市朝阳区某某路 ${i + 1} 号`,
-  category: (['vip', 'regular', 'potential', 'inactive'] as CustomerCategory[])[i % 4],
-  tags: ['重点客户', '长期合作', '新客户'].slice(0, (i % 3) + 1),
-  status: (['active', 'inactive', 'blocked'] as CustomerStatus[])[i % 3],
-  source: ['官网', '展会', '推荐', '电话'][i % 4],
-  remark: '这是客户备注信息',
-  contactPerson: `联系人 ${i + 1}`,
-  creditLimit: 100000 + i * 10000,
-  balance: 50000 + i * 5000,
-  createdAt: new Date(Date.now() - i * 86400000).toISOString(),
-  updatedAt: new Date().toISOString(),
-}));
+import type { Customer, CustomerCategory } from '@/types';
 
 const categoryOptions = [
   { value: '', label: '全部类型' },
@@ -43,8 +24,10 @@ const statusOptions = [
 
 export function CustomersPage() {
   const { searchKeyword, setSearchKeyword, filters, setFilters } = useCustomerStore();
-  const [customers] = useState<Customer[]>(mockCustomers);
+  const [customers, setCustomers] = useState<Customer[]>([]);
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
 
   const createModal = useModal();
   const detailModal = useModal();
@@ -55,12 +38,34 @@ export function CustomersPage() {
     category: 'regular' as CustomerCategory, contactPerson: '', remark: '',
   });
 
+  // 加载客户列表
+  const loadCustomers = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const result = await customerService.list({
+        page: 0,
+        pageSize: 0
+      });
+      if (result.success && result.data) {
+        setCustomers(result.data.items || []);
+      }
+    } catch (error) {
+      console.error('加载客户列表失败:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadCustomers();
+  }, [loadCustomers]);
+
   // 筛选数据
   const filteredCustomers = useMemo(() => {
     return customers.filter((c) => {
       const matchesSearch = !searchKeyword ||
-        c.name.includes(searchKeyword) ||
-        c.company.includes(searchKeyword) ||
+        c.name.toLowerCase().includes(searchKeyword.toLowerCase()) ||
+        c.company.toLowerCase().includes(searchKeyword.toLowerCase()) ||
         c.phone.includes(searchKeyword);
       const matchesCategory = !filters.category || c.category === filters.category;
       const matchesStatus = !filters.status || c.status === filters.status;
@@ -69,7 +74,6 @@ export function CustomersPage() {
   }, [customers, searchKeyword, filters]);
 
   const { paginatedItems, currentPage, totalPages, goToPage, totalItems } = usePagination(filteredCustomers, 10);
-
   const handleView = (customer: Customer) => {
     setSelectedCustomer(customer);
     detailModal.open();
@@ -84,7 +88,7 @@ export function CustomersPage() {
       phone: customer.phone,
       address: customer.address,
       category: customer.category,
-      contactPerson: customer.contactPerson,
+      contactPerson: customer.contact_person,
       remark: customer.remark,
     });
     createModal.open();
@@ -93,6 +97,67 @@ export function CustomersPage() {
   const handleDelete = (customer: Customer) => {
     setSelectedCustomer(customer);
     deleteModal.open();
+  };
+
+  const handleSave = async () => {
+    if (!form.values.name.trim()) {
+      alert('请输入客户名称');
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      const data = {
+        name: form.values.name,
+        company: form.values.company,
+        email: form.values.email,
+        phone: form.values.phone,
+        address: form.values.address,
+        category: form.values.category,
+        contactPerson: form.values.contactPerson,
+        remark: form.values.remark,
+        status: 'active',
+      };
+
+      let result;
+      if (selectedCustomer) {
+        result = await customerService.update(selectedCustomer.id, data);
+      } else {
+        result = await customerService.create(data);
+      }
+
+      if (result.success) {
+        createModal.close();
+        form.reset();
+        setSelectedCustomer(null);
+        loadCustomers();
+      } else {
+        alert(result.error || '保存失败');
+      }
+    } catch (error) {
+      console.error('保存客户失败:', error);
+      alert('保存失败');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!selectedCustomer) return;
+
+    try {
+      const result = await customerService.delete(selectedCustomer.id);
+      if (result.success) {
+        deleteModal.close();
+        setSelectedCustomer(null);
+        loadCustomers();
+      } else {
+        alert(result.error || '删除失败');
+      }
+    } catch (error) {
+      console.error('删除客户失败:', error);
+      alert('删除失败');
+    }
   };
 
   const columns = [
@@ -116,11 +181,11 @@ export function CustomersPage() {
         <div className="space-y-1">
           <div className="flex items-center gap-1 text-sm text-surface-600">
             <Phone className="h-3 w-3" />
-            {item.phone}
+            {item.phone || '-'}
           </div>
           <div className="flex items-center gap-1 text-sm text-surface-500">
             <Mail className="h-3 w-3" />
-            {item.email}
+            {item.email || '-'}
           </div>
         </div>
       ),
@@ -136,10 +201,10 @@ export function CustomersPage() {
       render: (item: Customer) => <StatusBadge status={item.status} />,
     },
     {
-      key: 'balance',
-      title: '余额',
+      key: 'contactPerson',
+      title: '联系人',
       render: (item: Customer) => (
-        <span className="font-medium">{formatCurrency(item.balance)}</span>
+        <span className="font-medium">{item.contact_person}</span>
       ),
     },
     {
@@ -169,9 +234,12 @@ export function CustomersPage() {
     },
   ];
 
+  if (isLoading) {
+    return <div className="flex items-center justify-center h-96"><Loading size="lg" /></div>;
+  }
+
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-surface-900">客户管理</h1>
@@ -186,11 +254,10 @@ export function CustomersPage() {
         </div>
       </div>
 
-      {/* Filters */}
       <Card className="p-4">
         <div className="flex flex-wrap items-center gap-4">
           <div className="flex-1 min-w-[240px]">
-            <SearchInput
+            <SearchInput disabled={createModal.isOpen}
               placeholder="搜索客户名称、公司、电话..."
               value={searchKeyword}
               onChange={(e) => setSearchKeyword(e.target.value)}
@@ -206,9 +273,8 @@ export function CustomersPage() {
         </div>
       </Card>
 
-      {/* Table */}
       <Card padding={false}>
-        <Table columns={columns} data={paginatedItems} rowKey="id" emptyText="暂无客户数据" />
+        <Table columns={columns} data={paginatedItems} rowKey="id" emptyText="暂无客户数据，点击「新建客户」添加" />
         {totalPages > 1 && (
           <div className="p-4 border-t border-surface-100 flex items-center justify-between">
             <span className="text-sm text-surface-500">共 {totalItems} 条记录</span>
@@ -217,10 +283,9 @@ export function CustomersPage() {
         )}
       </Card>
 
-      {/* Create/Edit Modal */}
       <Modal isOpen={createModal.isOpen} onClose={createModal.close} title={selectedCustomer ? '编辑客户' : '新建客户'} size="lg">
         <div className="grid grid-cols-2 gap-4">
-          <Input label="客户名称" value={form.values.name} onChange={(e) => form.handleChange('name', e.target.value)} placeholder="请输入客户名称" />
+          <Input label="客户名称 *" value={form.values.name} onChange={(e) => form.handleChange('name', e.target.value)} placeholder="请输入客户名称" />
           <Input label="公司名称" value={form.values.company} onChange={(e) => form.handleChange('company', e.target.value)} placeholder="请输入公司名称" />
           <Input label="联系人" value={form.values.contactPerson} onChange={(e) => form.handleChange('contactPerson', e.target.value)} placeholder="请输入联系人" />
           <Input label="电话" value={form.values.phone} onChange={(e) => form.handleChange('phone', e.target.value)} placeholder="请输入电话" />
@@ -235,11 +300,10 @@ export function CustomersPage() {
         </div>
         <div className="flex justify-end gap-3 mt-6">
           <Button variant="secondary" onClick={createModal.close}>取消</Button>
-          <Button onClick={createModal.close}>{selectedCustomer ? '保存' : '创建'}</Button>
+          <Button onClick={handleSave} isLoading={isSaving}>{selectedCustomer ? '保存' : '创建'}</Button>
         </div>
       </Modal>
 
-      {/* Detail Modal */}
       <Modal isOpen={detailModal.isOpen} onClose={detailModal.close} title="客户详情" size="lg">
         {selectedCustomer && (
           <div className="space-y-6">
@@ -255,24 +319,23 @@ export function CustomersPage() {
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4 text-sm">
-              <div><span className="text-surface-500">联系人:</span> {selectedCustomer.contactPerson}</div>
-              <div><span className="text-surface-500">电话:</span> {selectedCustomer.phone}</div>
-              <div><span className="text-surface-500">邮箱:</span> {selectedCustomer.email}</div>
-              <div><span className="text-surface-500">来源:</span> {selectedCustomer.source}</div>
-              <div className="col-span-2"><span className="text-surface-500">地址:</span> {selectedCustomer.address}</div>
-              <div><span className="text-surface-500">信用额度:</span> {formatCurrency(selectedCustomer.creditLimit)}</div>
-              <div><span className="text-surface-500">账户余额:</span> {formatCurrency(selectedCustomer.balance)}</div>
+              <div><span className="text-surface-500">联系人:</span> {selectedCustomer.contactPerson || '-'}</div>
+              <div><span className="text-surface-500">电话:</span> {selectedCustomer.phone || '-'}</div>
+              <div><span className="text-surface-500">邮箱:</span> {selectedCustomer.email || '-'}</div>
+              <div><span className="text-surface-500">来源:</span> {selectedCustomer.source || '-'}</div>
+              <div className="col-span-2"><span className="text-surface-500">地址:</span> {selectedCustomer.address || '-'}</div>
+              <div><span className="text-surface-500">信用额度:</span> {formatCurrency(selectedCustomer.creditLimit || 0)}</div>
+              <div><span className="text-surface-500">账户余额:</span> {formatCurrency(selectedCustomer.balance || 0)}</div>
               <div className="col-span-2"><span className="text-surface-500">备注:</span> {selectedCustomer.remark || '无'}</div>
             </div>
           </div>
         )}
       </Modal>
 
-      {/* Delete Confirm */}
       <ConfirmDialog
         isOpen={deleteModal.isOpen}
         onClose={deleteModal.close}
-        onConfirm={deleteModal.close}
+        onConfirm={handleConfirmDelete}
         title="删除客户"
         message={`确定要删除客户 "${selectedCustomer?.name}" 吗？此操作不可撤销。`}
         variant="danger"

@@ -1,32 +1,11 @@
-import { useState, useMemo } from 'react';
-import { Button, SearchInput, Select, Card, Table, Modal, StatusBadge, Pagination, ConfirmDialog, Tabs } from '@/components/common';
+import { useState, useEffect, useMemo, useCallback } from 'react';
+import { Button, SearchInput, Select, Card, Table, Modal, StatusBadge, Pagination, ConfirmDialog, Tabs, Loading, Input } from '@/components/common';
 import { useOrderStore } from '@/store';
-import { useModal, usePagination } from '@/hooks';
+import { useModal, usePagination, useForm } from '@/hooks';
 import { formatDate, formatCurrency, getStatusText } from '@/utils';
+import { orderService, customerService } from '@/services/tauri';
 import { Plus, Download, Eye, Trash2, CheckCircle, XCircle, Truck } from 'lucide-react';
-import type { Order, OrderStatus, OrderType } from '@/types';
-
-const mockOrders: Order[] = Array.from({ length: 30 }, (_, i) => ({
-  id: `order-${i + 1}`,
-  code: `SO2024${String(i + 1).padStart(5, '0')}`,
-  type: (['sale', 'purchase', 'return'] as OrderType[])[i % 3],
-  customerId: `cust-${(i % 10) + 1}`,
-  customerName: ['科技有限公司', '贸易股份', '信息技术', '网络科技', '软件开发'][i % 5],
-  status: (['draft', 'pending', 'confirmed', 'shipped', 'completed', 'cancelled'] as OrderStatus[])[i % 6],
-  items: [{ id: '1', productId: 'p1', productName: '笔记本电脑', productCode: 'P001', unit: '台', quantity: 2, unitPrice: 5000, discount: 0, amount: 10000, remark: '' }],
-  totalQuantity: 5 + i,
-  totalAmount: 10000 + i * 1000,
-  discountAmount: 500,
-  payableAmount: 9500 + i * 1000,
-  paidAmount: i % 2 === 0 ? 9500 + i * 1000 : 0,
-  deliveryAddress: `北京市朝阳区某某路 ${i + 1} 号`,
-  deliveryDate: new Date(Date.now() + i * 86400000).toISOString(),
-  remark: '订单备注',
-  operatorId: 'user-1',
-  operatorName: '管理员',
-  createdAt: new Date(Date.now() - i * 86400000).toISOString(),
-  updatedAt: new Date().toISOString(),
-}));
+import type { Order, OrderType, Customer } from '@/types';
 
 const typeOptions = [
   { value: '', label: '全部类型' },
@@ -52,19 +31,110 @@ const tabs = [
   { id: 'completed', label: '已完成' },
 ];
 
+// 后端 snake_case -> 前端 camelCase
+// 后端 snake_case -> 前端 camelCase 统一映射
+const normalizeOrder = (raw: any): Order => {
+  return {
+    ...raw,
+
+    // 类型字段：后端 order_type，前端代码用 type
+    type: raw.type ?? raw.order_type ?? '',
+
+    // 客户字段
+    customerId: raw.customerId ?? raw.customer_id ?? '',
+    customerName: raw.customerName ?? raw.customer_name ?? '',
+
+    // 金额/数量字段
+    totalAmount: raw.totalAmount ?? raw.total_amount ?? 0,
+    discountAmount: raw.discountAmount ?? raw.discount_amount ?? 0,
+    payableAmount: raw.payableAmount ?? raw.payable_amount ?? 0,
+    paidAmount: raw.paidAmount ?? raw.paid_amount ?? 0,
+    totalQuantity: raw.totalQuantity ?? raw.total_quantity ?? 0,
+
+    // 配送字段
+    deliveryAddress: raw.deliveryAddress ?? raw.delivery_address ?? '',
+    deliveryDate: raw.deliveryDate ?? raw.delivery_date ?? '',
+
+    // 操作人
+    operatorId: raw.operatorId ?? raw.operator_id ?? '',
+    operatorName: raw.operatorName ?? raw.operator_name ?? '',
+
+    // 时间字段
+    createdAt: raw.createdAt ?? raw.created_at,
+    updatedAt: raw.updatedAt ?? raw.updated_at,
+  } as Order;
+};
+
 export function OrdersPage() {
   const { searchKeyword, setSearchKeyword, filters, setFilters } = useOrderStore();
-  const [orders] = useState<Order[]>(mockOrders);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [customers, setCustomers] = useState<Customer[]>([]);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [activeTab, setActiveTab] = useState('all');
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
 
+  const createModal = useModal();
   const detailModal = useModal();
   const deleteModal = useModal();
 
+  const form = useForm({
+    type: 'sale' as OrderType,
+    customerId: '',
+    customerName: '',
+    totalQuantity: 1,
+    totalAmount: 0,
+    discountAmount: 0,
+    payableAmount: 0,
+    deliveryAddress: '',
+    remark: '',
+  });
+
+  const loadOrders = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const result = await orderService.list({
+        page: 0,
+        pageSize: 0
+      });
+      if (result.success && result.data) {
+        // setOrders(result.data.items || []);
+        const items = (result.data.items || []).map(normalizeOrder);
+        setOrders(items);
+      }
+    } catch (error) {
+      console.error('加载订单列表失败:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  const loadCustomers = useCallback(async () => {
+    try {
+      const result = await customerService.list({
+        page: 0,
+        pageSize: 0
+      });
+      if (result.success && result.data) {
+        setCustomers(result.data.items || []);
+      }
+    } catch (error) {
+      console.error('加载客户列表失败:', error);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadOrders();
+    loadCustomers();
+  }, [loadOrders, loadCustomers]);
+
   const filteredOrders = useMemo(() => {
     return orders.filter((o) => {
-      const matchesSearch = !searchKeyword || o.code.includes(searchKeyword) || o.customerName.includes(searchKeyword);
-      const matchesType = !filters.type || o.type === filters.type;
+      const matchesSearch = !searchKeyword ||
+        o.code.toLowerCase().includes(searchKeyword.toLowerCase()) ||
+        (o.customerName || '').toLowerCase().includes(searchKeyword.toLowerCase());
+      const orderType = o.type;
+      const matchesType = !filters.type || orderType === filters.type;
       const matchesStatus = !filters.status || o.status === filters.status;
       let matchesTab = true;
       if (activeTab === 'pending') matchesTab = ['draft', 'pending'].includes(o.status);
@@ -76,18 +146,118 @@ export function OrdersPage() {
 
   const { paginatedItems, currentPage, totalPages, goToPage, totalItems } = usePagination(filteredOrders, 10);
 
+  const handleCreateOrder = async () => {
+    if (!form.values.customerName.trim()) {
+      alert('请输入客户名称');
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      const data = {
+        type: form.values.type,
+        customerId: form.values.customerId,
+        customerName: form.values.customerName,
+        totalQuantity: form.values.totalQuantity,
+        totalAmount: form.values.totalAmount,
+        discountAmount: form.values.discountAmount,
+        payableAmount: form.values.payableAmount || form.values.totalAmount - form.values.discountAmount,
+        deliveryAddress: form.values.deliveryAddress,
+        remark: form.values.remark,
+      };
+
+      const result = await orderService.create(data);
+      if (result.success) {
+        createModal.close();
+        form.reset();
+        loadOrders();
+      } else {
+        alert(result.error || '创建失败');
+      }
+    } catch (error) {
+      console.error('创建订单失败:', error);
+      alert('创建失败');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleConfirm = async (order: Order) => {
+    try {
+      const result = await orderService.confirm(order.id);
+      if (result.success) {
+        loadOrders();
+      } else {
+        alert(result.error || '确认失败');
+      }
+    } catch (error) {
+      console.error('确认订单失败:', error);
+    }
+  };
+
+  const handleCancel = async (order: Order) => {
+    if (!confirm('确定要取消此订单吗？')) return;
+    try {
+      const result = await orderService.cancel(order.id, '用户取消');
+      if (result.success) {
+        loadOrders();
+      } else {
+        alert(result.error || '取消失败');
+      }
+    } catch (error) {
+      console.error('取消订单失败:', error);
+    }
+  };
+
+  const handleComplete = async (order: Order) => {
+    try {
+      const result = await orderService.complete(order.id);
+      if (result.success) {
+        loadOrders();
+      } else {
+        alert(result.error || '完成失败');
+      }
+    } catch (error) {
+      console.error('完成订单失败:', error);
+    }
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!selectedOrder) return;
+    try {
+      const result = await orderService.delete(selectedOrder.id);
+      if (result.success) {
+        deleteModal.close();
+        setSelectedOrder(null);
+        loadOrders();
+      } else {
+        alert(result.error || '删除失败');
+      }
+    } catch (error) {
+      console.error('删除订单失败:', error);
+    }
+  };
+
   const getStatusActions = (order: Order) => {
     switch (order.status) {
       case 'draft':
       case 'pending':
         return (
           <>
-            <button className="p-1.5 hover:bg-success-50 rounded-lg" title="确认"><CheckCircle className="h-4 w-4 text-success-600" /></button>
-            <button className="p-1.5 hover:bg-danger-50 rounded-lg" title="取消"><XCircle className="h-4 w-4 text-danger-500" /></button>
+            <button onClick={() => handleConfirm(order)} className="p-1.5 hover:bg-success-50 rounded-lg" title="确认">
+              <CheckCircle className="h-4 w-4 text-success-600" />
+            </button>
+            <button onClick={() => handleCancel(order)} className="p-1.5 hover:bg-danger-50 rounded-lg" title="取消">
+              <XCircle className="h-4 w-4 text-danger-500" />
+            </button>
           </>
         );
       case 'confirmed':
-        return <button className="p-1.5 hover:bg-primary-50 rounded-lg" title="发货"><Truck className="h-4 w-4 text-primary-600" /></button>;
+        return (
+          <button onClick={() => handleComplete(order)} className="p-1.5 hover:bg-primary-50 rounded-lg" title="完成">
+            <Truck className="h-4 w-4 text-primary-600" />
+          </button>
+        );
       default:
         return null;
     }
@@ -107,26 +277,29 @@ export function OrdersPage() {
     {
       key: 'customer',
       title: '客户',
-      render: (item: Order) => <span className="font-medium">{item.customerName}</span>,
+      render: (item: Order) => <span className="font-medium">{item.customerName || '-'}</span>,
     },
     {
       key: 'type',
       title: '类型',
-      render: (item: Order) => (
-        <span className={`text-xs px-2 py-1 rounded-full ${item.type === 'sale' ? 'bg-primary-50 text-primary-600' :
-            item.type === 'purchase' ? 'bg-success-50 text-success-600' : 'bg-warning-50 text-warning-600'
-          }`}>
-          {getStatusText(item.type)}
-        </span>
-      ),
+      render: (item: Order) => {
+        const orderType = item.type;
+        return (
+          <span className={`text-xs px-2 py-1 rounded-full ${orderType === 'sale' ? 'bg-primary-50 text-primary-600' :
+            orderType === 'purchase' ? 'bg-success-50 text-success-600' : 'bg-warning-50 text-warning-600'
+            }`}>
+            {getStatusText(orderType || '')}
+          </span>
+        );
+      },
     },
     {
       key: 'amount',
       title: '金额',
       render: (item: Order) => (
         <div>
-          <p className="font-medium text-surface-900">{formatCurrency(item.payableAmount)}</p>
-          <p className="text-xs text-surface-500">{item.totalQuantity} 件商品</p>
+          <p className="font-medium text-surface-900">{formatCurrency(item.payableAmount || 0)}</p>
+          <p className="text-xs text-surface-500">{item.totalQuantity || 0} 件商品</p>
         </div>
       ),
     },
@@ -142,12 +315,20 @@ export function OrdersPage() {
       render: (item: Order) => (
         <div className="flex items-center gap-1">
           {getStatusActions(item)}
-          <button onClick={() => { setSelectedOrder(item); detailModal.open(); }} className="p-1.5 hover:bg-surface-100 rounded-lg"><Eye className="h-4 w-4 text-surface-500" /></button>
-          <button onClick={() => { setSelectedOrder(item); deleteModal.open(); }} className="p-1.5 hover:bg-danger-50 rounded-lg"><Trash2 className="h-4 w-4 text-danger-500" /></button>
+          <button onClick={() => { setSelectedOrder(item); detailModal.open(); }} className="p-1.5 hover:bg-surface-100 rounded-lg">
+            <Eye className="h-4 w-4 text-surface-500" />
+          </button>
+          <button onClick={() => { setSelectedOrder(item); deleteModal.open(); }} className="p-1.5 hover:bg-danger-50 rounded-lg">
+            <Trash2 className="h-4 w-4 text-danger-500" />
+          </button>
         </div>
       ),
     },
   ];
+
+  if (isLoading) {
+    return <div className="flex items-center justify-center h-96"><Loading size="lg" /></div>;
+  }
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -158,7 +339,7 @@ export function OrdersPage() {
         </div>
         <div className="flex items-center gap-3">
           <Button variant="outline" leftIcon={<Download className="h-4 w-4" />}>导出</Button>
-          <Button leftIcon={<Plus className="h-4 w-4" />}>新建订单</Button>
+          <Button leftIcon={<Plus className="h-4 w-4" />} onClick={() => { form.reset(); createModal.open(); }}>新建订单</Button>
         </div>
       </div>
 
@@ -179,7 +360,7 @@ export function OrdersPage() {
       </Card>
 
       <Card padding={false}>
-        <Table columns={columns} data={paginatedItems} rowKey="id" emptyText="暂无订单数据" />
+        <Table columns={columns} data={paginatedItems} rowKey="id" emptyText="暂无订单数据，点击「新建订单」添加" />
         {totalPages > 1 && (
           <div className="p-4 border-t border-surface-100 flex items-center justify-between">
             <span className="text-sm text-surface-500">共 {totalItems} 条记录</span>
@@ -188,7 +369,59 @@ export function OrdersPage() {
         )}
       </Card>
 
-      <Modal isOpen={detailModal.isOpen} onClose={detailModal.close} title="订单详情" size="xl">
+      <Modal isOpen={createModal.isOpen} onClose={createModal.close} title="新建订单" size="lg">
+        <div className="grid grid-cols-2 gap-4">
+          <Select
+            label="订单类型"
+            options={[
+              { value: 'sale', label: '销售订单' },
+              { value: 'purchase', label: '采购订单' },
+              { value: 'return', label: '退货订单' },
+            ]}
+            value={form.values.type}
+            onChange={(v) => form.handleChange('type', v)}
+          />
+          <Select
+            label="选择客户"
+            options={[
+              { value: '', label: '请选择客户' },
+              ...customers.map(c => ({ value: c.id, label: c.name }))
+            ]}
+            value={form.values.customerId}
+            onChange={(v) => {
+              form.handleChange('customerId', v);
+              const customer = customers.find(c => c.id === v);
+              if (customer) {
+                form.handleChange('customerName', customer.name);
+              }
+            }}
+          />
+          <Input label="客户名称" value={form.values.customerName} onChange={(e) => form.handleChange('customerName', e.target.value)} placeholder="或直接输入客户名称" />
+          <Input label="商品数量" type="number" value={form.values.totalQuantity} onChange={(e) => form.handleChange('totalQuantity', Number(e.target.value))} />
+          <Input label="订单金额" type="number" value={form.values.totalAmount} onChange={(e) => {
+            const amount = Number(e.target.value);
+            form.handleChange('totalAmount', amount);
+            form.handleChange('payableAmount', amount - form.values.discountAmount);
+          }} />
+          <Input label="优惠金额" type="number" value={form.values.discountAmount} onChange={(e) => {
+            const discount = Number(e.target.value);
+            form.handleChange('discountAmount', discount);
+            form.handleChange('payableAmount', form.values.totalAmount - discount);
+          }} />
+          <div className="col-span-2">
+            <Input label="收货地址" value={form.values.deliveryAddress} onChange={(e) => form.handleChange('deliveryAddress', e.target.value)} />
+          </div>
+          <div className="col-span-2">
+            <Input label="备注" value={form.values.remark} onChange={(e) => form.handleChange('remark', e.target.value)} />
+          </div>
+        </div>
+        <div className="flex justify-end gap-3 mt-6">
+          <Button variant="secondary" onClick={createModal.close}>取消</Button>
+          <Button onClick={handleCreateOrder} isLoading={isSaving}>创建</Button>
+        </div>
+      </Modal>
+
+      <Modal isOpen={detailModal.isOpen} onClose={detailModal.close} title="订单详情" size="lg">
         {selectedOrder && (
           <div className="space-y-6">
             <div className="flex items-center justify-between p-4 bg-surface-50 rounded-xl">
@@ -199,43 +432,20 @@ export function OrdersPage() {
               <StatusBadge status={selectedOrder.status} />
             </div>
             <div className="grid grid-cols-2 gap-4 text-sm">
-              <div><span className="text-surface-500">客户:</span> {selectedOrder.customerName}</div>
-              <div><span className="text-surface-500">类型:</span> {getStatusText(selectedOrder.type)}</div>
-              <div><span className="text-surface-500">商品数量:</span> {selectedOrder.totalQuantity} 件</div>
-              <div><span className="text-surface-500">订单金额:</span> {formatCurrency(selectedOrder.totalAmount)}</div>
-              <div><span className="text-surface-500">优惠金额:</span> {formatCurrency(selectedOrder.discountAmount)}</div>
-              <div><span className="text-surface-500">应付金额:</span> <span className="font-semibold text-primary-600">{formatCurrency(selectedOrder.payableAmount)}</span></div>
-              <div className="col-span-2"><span className="text-surface-500">收货地址:</span> {selectedOrder.deliveryAddress}</div>
+              <div><span className="text-surface-500">客户:</span> {selectedOrder.customerName || '-'}</div>
+              <div><span className="text-surface-500">类型:</span> {getStatusText(selectedOrder.type || '')}</div>
+              <div><span className="text-surface-500">商品数量:</span> {selectedOrder.totalQuantity || 0} 件</div>
+              <div><span className="text-surface-500">订单金额:</span> {formatCurrency(selectedOrder.totalAmount || 0)}</div>
+              <div><span className="text-surface-500">优惠金额:</span> {formatCurrency(selectedOrder.discountAmount || 0)}</div>
+              <div><span className="text-surface-500">应付金额:</span> <span className="font-semibold text-primary-600">{formatCurrency(selectedOrder.payableAmount || 0)}</span></div>
+              <div className="col-span-2"><span className="text-surface-500">收货地址:</span> {selectedOrder.deliveryAddress || '-'}</div>
               <div className="col-span-2"><span className="text-surface-500">备注:</span> {selectedOrder.remark || '无'}</div>
-            </div>
-            <div>
-              <h4 className="font-medium mb-3">商品明细</h4>
-              <table className="table">
-                <thead>
-                  <tr>
-                    <th>商品名称</th>
-                    <th>单价</th>
-                    <th>数量</th>
-                    <th>金额</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {selectedOrder.items.map((item) => (
-                    <tr key={item.id}>
-                      <td>{item.productName}</td>
-                      <td>{formatCurrency(item.unitPrice)}</td>
-                      <td>{item.quantity} {item.unit}</td>
-                      <td>{formatCurrency(item.amount)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
             </div>
           </div>
         )}
       </Modal>
 
-      <ConfirmDialog isOpen={deleteModal.isOpen} onClose={deleteModal.close} onConfirm={deleteModal.close} title="删除订单" message={`确定要删除订单 "${selectedOrder?.code}" 吗？`} variant="danger" confirmText="删除" />
+      <ConfirmDialog isOpen={deleteModal.isOpen} onClose={deleteModal.close} onConfirm={handleConfirmDelete} title="删除订单" message={`确定要删除订单 "${selectedOrder?.code}" 吗？`} variant="danger" confirmText="删除" />
     </div>
   );
 }

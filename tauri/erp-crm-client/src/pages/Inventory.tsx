@@ -1,33 +1,11 @@
-import { useState, useMemo } from 'react';
-import { Button, Input, SearchInput, Select, Card, Table, Modal, StatusBadge, Pagination, ConfirmDialog, Alert } from '@/components/common';
+import { useState, useEffect, useMemo, useCallback } from 'react';
+import { Button, Input, SearchInput, Select, Card, Table, Modal, StatusBadge, Pagination, ConfirmDialog, Alert, Loading } from '@/components/common';
 import { useInventoryStore } from '@/store';
-import { useModal, usePagination, useForm, useScanner } from '@/hooks';
+import { useModal, usePagination, useForm } from '@/hooks';
 import { formatCurrency, cn } from '@/utils';
-import { Plus, Download, Trash2, Eye, AlertTriangle, ArrowDownToLine, ArrowUpFromLine, Wifi, WifiOff } from 'lucide-react';
-import type { Product, ProductStatus } from '@/types';
-
-// 模拟数据
-const mockProducts: Product[] = Array.from({ length: 50 }, (_, i) => ({
-  id: `prod-${i + 1}`,
-  code: `P${String(i + 1).padStart(5, '0')}`,
-  barcode: `69${String(i + 1).padStart(11, '0')}`,
-  name: ['笔记本电脑', '打印机', '办公椅', '显示器', '键盘鼠标套装', '复印纸', '文件夹', '订书机'][i % 8],
-  category: ['电子产品', '办公设备', '办公家具', '耗材'][i % 4],
-  unit: ['台', '个', '把', '箱', '套'][i % 5],
-  specification: `规格型号 ${i + 1}`,
-  brand: ['联想', '惠普', '戴尔', '华为', '小米'][i % 5],
-  costPrice: 1000 + i * 100,
-  sellPrice: 1500 + i * 150,
-  minStock: 10,
-  maxStock: 1000,
-  currentStock: Math.floor(Math.random() * 100),
-  warehouseId: 'wh-1',
-  location: `A区-${Math.floor(i / 10) + 1}排-${(i % 10) + 1}号`,
-  status: (['active', 'discontinued', 'out_of_stock'] as ProductStatus[])[i % 3],
-  description: '产品描述信息',
-  createdAt: new Date(Date.now() - i * 86400000).toISOString(),
-  updatedAt: new Date().toISOString(),
-}));
+import { inventoryService } from '@/services/tauri';
+import { Plus, Download, Edit, Trash2, Eye, AlertTriangle, ArrowDownToLine, ArrowUpFromLine } from 'lucide-react';
+import type { Product } from '@/types';
 
 const categoryOptions = [
   { value: '', label: '全部类型' },
@@ -44,42 +22,86 @@ const statusOptions = [
   { value: 'out_of_stock', label: '缺货' },
 ];
 
+// 把后端 snake_case 字段统一映射到前端 camelCase，避免页面到处写两套字段名
+const normalizeProduct = (raw: any): Product => {
+  return {
+    ...raw,
+
+    // ✅ 核心字段映射
+    costPrice: raw.costPrice ?? raw.cost_price ?? 0,
+    sellPrice: raw.sellPrice ?? raw.sell_price ?? 0,
+    currentStock: raw.currentStock ?? raw.current_stock ?? 0,
+    minStock: raw.minStock ?? raw.min_stock ?? 10,
+    maxStock: raw.maxStock ?? raw.max_stock ?? 1000,
+
+    // 可选：时间字段（如果 Product 类型里有）
+    createdAt: raw.createdAt ?? raw.created_at,
+    updatedAt: raw.updatedAt ?? raw.updated_at,
+
+    // 可选：其它你们可能会用到的字段
+    warehouseId: raw.warehouseId ?? raw.warehouse_id,
+  } as Product;
+};
+
+
 export function InventoryPage() {
-  const { searchKeyword, setSearchKeyword, filters, setFilters, lastScanResult, scannerConnected } = useInventoryStore();
-  const [products] = useState<Product[]>(mockProducts);
+  const { searchKeyword, setSearchKeyword, filters, setFilters } = useInventoryStore();
+  const [products, setProducts] = useState<Product[]>([]);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [stockOperation, setStockOperation] = useState<'in' | 'out' | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
 
   const createModal = useModal();
   const detailModal = useModal();
   const deleteModal = useModal();
   const stockModal = useModal();
-  const scannerModal = useModal();
-
-  const { connect, disconnect, clearLastScan } = useScanner();
 
   const form = useForm({
-    name: '', code: '', barcode: '', category: '', unit: '',
+    name: '', code: '', barcode: '', category: '', unit: '个',
     specification: '', brand: '', costPrice: 0, sellPrice: 0,
-    minStock: 10, maxStock: 1000, location: '', description: '',
+    minStock: 10, maxStock: 1000, currentStock: 0, location: '', description: '',
   });
 
   const stockForm = useForm({ quantity: 0, unitPrice: 0, remark: '' });
 
+  const loadProducts = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const result = await inventoryService.list({
+        page: 0,
+        pageSize: 0
+      });
+      if (result.success && result.data) {
+        // setProducts(result.data.items || []);
+        const items = (result.data.items || []).map(normalizeProduct);
+        setProducts(items);
+      }
+    } catch (error) {
+      console.error('加载产品列表失败:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadProducts();
+  }, [loadProducts]);
+
   const filteredProducts = useMemo(() => {
     return products.filter((p) => {
       const matchesSearch = !searchKeyword ||
-        p.name.includes(searchKeyword) ||
-        p.code.includes(searchKeyword) ||
-        p.barcode.includes(searchKeyword);
+        p.name.toLowerCase().includes(searchKeyword.toLowerCase()) ||
+        p.code.toLowerCase().includes(searchKeyword.toLowerCase()) ||
+        (p.barcode && p.barcode.includes(searchKeyword));
       const matchesCategory = !filters.category || p.category === filters.category;
       const matchesStatus = !filters.status || p.status === filters.status;
-      const matchesLowStock = !filters.lowStock || p.currentStock < p.minStock;
+      const matchesLowStock = !filters.lowStock || (p.currentStock || 0) < (p.minStock || 10);
       return matchesSearch && matchesCategory && matchesStatus && matchesLowStock;
     });
   }, [products, searchKeyword, filters]);
 
-  const lowStockCount = products.filter(p => p.currentStock < p.minStock).length;
+  const lowStockCount = products.filter(p => (p.currentStock || 0) < (p.minStock || 10)).length;
   const { paginatedItems, currentPage, totalPages, goToPage, totalItems } = usePagination(filteredProducts, 10);
 
   const handleStockIn = (product: Product) => {
@@ -96,6 +118,138 @@ export function InventoryPage() {
     stockModal.open();
   };
 
+  const handleEdit = (product: Product) => {
+    setSelectedProduct(product);
+    form.setValues({
+      name: product.name,
+      code: product.code,
+      barcode: product.barcode || '',
+      category: product.category || '',
+      unit: product.unit || '个',
+      specification: product.specification || '',
+      brand: product.brand || '',
+      costPrice: product.costPrice || 0,
+      sellPrice: product.sellPrice || 0,
+      minStock: product.minStock || 10,
+      maxStock: product.maxStock || 1000,
+      currentStock: product.currentStock || 0,
+      location: product.location || '',
+      description: product.description || '',
+    });
+    createModal.open();
+  };
+
+  const handleSave = async () => {
+    if (!form.values.name.trim()) {
+      alert('请输入产品名称');
+      return;
+    }
+    if (!form.values.code.trim()) {
+      alert('请输入产品编码');
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      const data = {
+        name: form.values.name,
+        code: form.values.code,
+        barcode: form.values.barcode,
+        category: form.values.category,
+        unit: form.values.unit,
+        specification: form.values.specification,
+        brand: form.values.brand,
+        costPrice: form.values.costPrice,
+        sellPrice: form.values.sellPrice,
+        minStock: form.values.minStock,
+        maxStock: form.values.maxStock,
+        currentStock: form.values.currentStock,
+        location: form.values.location,
+        description: form.values.description,
+        status: 'active',
+      };
+
+      let result;
+      if (selectedProduct) {
+        result = await inventoryService.update(selectedProduct.id, data);
+      } else {
+        result = await inventoryService.create(data);
+      }
+
+      if (result.success) {
+        createModal.close();
+        form.reset();
+        setSelectedProduct(null);
+        loadProducts();
+      } else {
+        alert(result.error || '保存失败');
+      }
+    } catch (error) {
+      console.error('保存产品失败:', error);
+      alert('保存失败');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleStockSave = async () => {
+    if (!selectedProduct || stockForm.values.quantity <= 0) {
+      alert('请输入有效的数量');
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      let result;
+      if (stockOperation === 'in') {
+        result = await inventoryService.stockIn(
+          selectedProduct.id,
+          stockForm.values.quantity,
+          stockForm.values.unitPrice,
+          stockForm.values.remark
+        );
+      } else {
+        result = await inventoryService.stockOut(
+          selectedProduct.id,
+          stockForm.values.quantity,
+          stockForm.values.unitPrice,
+          stockForm.values.remark
+        );
+      }
+
+      if (result.success) {
+        stockModal.close();
+        stockForm.reset();
+        loadProducts();
+      } else {
+        alert(result.error || '操作失败');
+      }
+    } catch (error) {
+      console.error('库存操作失败:', error);
+      alert('操作失败');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!selectedProduct) return;
+
+    try {
+      const result = await inventoryService.delete(selectedProduct.id);
+      if (result.success) {
+        deleteModal.close();
+        setSelectedProduct(null);
+        loadProducts();
+      } else {
+        alert(result.error || '删除失败');
+      }
+    } catch (error) {
+      console.error('删除产品失败:', error);
+      alert('删除失败');
+    }
+  };
+
   const columns = [
     {
       key: 'code',
@@ -103,7 +257,7 @@ export function InventoryPage() {
       render: (item: Product) => (
         <div>
           <p className="font-mono text-sm font-medium text-surface-900">{item.code}</p>
-          <p className="text-xs text-surface-400 font-mono">{item.barcode}</p>
+          <p className="text-xs text-surface-400 font-mono">{item.barcode || '-'}</p>
         </div>
       ),
     },
@@ -113,7 +267,7 @@ export function InventoryPage() {
       render: (item: Product) => (
         <div>
           <p className="font-medium text-surface-900">{item.name}</p>
-          <p className="text-xs text-surface-500">{item.brand} | {item.specification}</p>
+          <p className="text-xs text-surface-500">{item.brand || '-'} | {item.specification || '-'}</p>
         </div>
       ),
     },
@@ -121,25 +275,24 @@ export function InventoryPage() {
     {
       key: 'stock',
       title: '库存',
-      render: (item: Product) => (
-        <div className="flex items-center gap-2">
-          <span className={cn(
-            'font-medium',
-            item.currentStock < item.minStock ? 'text-danger-600' : 'text-surface-900'
-          )}>
-            {item.currentStock}
-          </span>
-          <span className="text-surface-400">{item.unit}</span>
-          {item.currentStock < item.minStock && (
-            <AlertTriangle className="h-4 w-4 text-warning-500" />
-          )}
-        </div>
-      ),
+      render: (item: Product) => {
+        const stock = item.currentStock ?? 0;
+        const minStock = item.minStock ?? 10;
+        return (
+          <div className="flex items-center gap-2">
+            <span className={cn('font-medium', stock < minStock ? 'text-danger-600' : 'text-surface-900')}>
+              {stock}
+            </span>
+            <span className="text-surface-400">{item.unit}</span>
+            {stock < minStock && <AlertTriangle className="h-4 w-4 text-warning-500" />}
+          </div>
+        );
+      },
     },
     {
       key: 'price',
       title: '售价',
-      render: (item: Product) => <span className="font-medium">{formatCurrency(item.sellPrice)}</span>,
+      render: (item: Product) => <span className="font-medium">{formatCurrency(item.sellPrice || 0)}</span>,
     },
     { key: 'location', title: '库位' },
     {
@@ -159,8 +312,11 @@ export function InventoryPage() {
           <button onClick={() => handleStockOut(item)} className="p-1.5 hover:bg-primary-50 rounded-lg" title="出库">
             <ArrowUpFromLine className="h-4 w-4 text-primary-600" />
           </button>
-          <button onClick={() => { setSelectedProduct(item); detailModal.open(); }} className="p-1.5 hover:bg-surface-100 rounded-lg" title="查看">
+          <button onClick={() => { console.log('viewwww: ', item); setSelectedProduct(item); detailModal.open(); }} className="p-1.5 hover:bg-surface-100 rounded-lg" title="查看">
             <Eye className="h-4 w-4 text-surface-500" />
+          </button>
+          <button onClick={() => handleEdit(item)} className="p-1.5 hover:bg-surface-100 rounded-lg" title="编辑">
+            <Edit className="h-4 w-4 text-surface-500" />
           </button>
           <button onClick={() => { setSelectedProduct(item); deleteModal.open(); }} className="p-1.5 hover:bg-danger-50 rounded-lg" title="删除">
             <Trash2 className="h-4 w-4 text-danger-500" />
@@ -170,6 +326,10 @@ export function InventoryPage() {
     },
   ];
 
+  if (isLoading) {
+    return <div className="flex items-center justify-center h-96"><Loading size="lg" /></div>;
+  }
+
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex items-center justify-between">
@@ -178,13 +338,6 @@ export function InventoryPage() {
           <p className="text-surface-500 mt-1">管理产品库存、入库出库操作</p>
         </div>
         <div className="flex items-center gap-3">
-          <Button
-            variant={scannerConnected ? 'success' : 'outline'}
-            leftIcon={scannerConnected ? <Wifi className="h-4 w-4" /> : <WifiOff className="h-4 w-4" />}
-            onClick={scannerModal.open}
-          >
-            {scannerConnected ? '扫码枪已连接' : '连接扫码枪'}
-          </Button>
           <Button variant="outline" leftIcon={<Download className="h-4 w-4" />}>导出</Button>
           <Button leftIcon={<Plus className="h-4 w-4" />} onClick={() => { form.reset(); setSelectedProduct(null); createModal.open(); }}>
             新建产品
@@ -194,10 +347,6 @@ export function InventoryPage() {
 
       {lowStockCount > 0 && (
         <Alert type="warning" title="库存预警" message={`有 ${lowStockCount} 个产品库存低于安全库存，请及时补货`} />
-      )}
-
-      {lastScanResult && (
-        <Alert type="info" title="扫码结果" message={`条码: ${lastScanResult.barcode}${lastScanResult.product ? ` - ${lastScanResult.product.name}` : ' (未找到产品)'}`} onClose={clearLastScan} />
       )}
 
       <Card className="p-4">
@@ -218,7 +367,7 @@ export function InventoryPage() {
       </Card>
 
       <Card padding={false}>
-        <Table columns={columns} data={paginatedItems} rowKey="id" emptyText="暂无产品数据" />
+        <Table columns={columns} data={paginatedItems} rowKey="id" emptyText="暂无产品数据，点击「新建产品」添加" />
         {totalPages > 1 && (
           <div className="p-4 border-t border-surface-100 flex items-center justify-between">
             <span className="text-sm text-surface-500">共 {totalItems} 条记录</span>
@@ -227,11 +376,10 @@ export function InventoryPage() {
         )}
       </Card>
 
-      {/* Create/Edit Modal */}
       <Modal isOpen={createModal.isOpen} onClose={createModal.close} title={selectedProduct ? '编辑产品' : '新建产品'} size="lg">
         <div className="grid grid-cols-2 gap-4">
-          <Input label="产品名称" value={form.values.name} onChange={(e) => form.handleChange('name', e.target.value)} />
-          <Input label="产品编码" value={form.values.code} onChange={(e) => form.handleChange('code', e.target.value)} />
+          <Input label="产品名称 *" value={form.values.name} onChange={(e) => form.handleChange('name', e.target.value)} />
+          <Input label="产品编码 *" value={form.values.code} onChange={(e) => form.handleChange('code', e.target.value)} placeholder="留空自动生成" />
           <Input label="条形码" value={form.values.barcode} onChange={(e) => form.handleChange('barcode', e.target.value)} />
           <Select label="产品类别" options={categoryOptions.slice(1)} value={form.values.category} onChange={(v) => form.handleChange('category', v)} />
           <Input label="品牌" value={form.values.brand} onChange={(e) => form.handleChange('brand', e.target.value)} />
@@ -241,55 +389,32 @@ export function InventoryPage() {
           <Input label="成本价" type="number" value={form.values.costPrice} onChange={(e) => form.handleChange('costPrice', Number(e.target.value))} />
           <Input label="售价" type="number" value={form.values.sellPrice} onChange={(e) => form.handleChange('sellPrice', Number(e.target.value))} />
           <Input label="最小库存" type="number" value={form.values.minStock} onChange={(e) => form.handleChange('minStock', Number(e.target.value))} />
-          <Input label="最大库存" type="number" value={form.values.maxStock} onChange={(e) => form.handleChange('maxStock', Number(e.target.value))} />
+          <Input label="初始库存" type="number" value={form.values.currentStock} onChange={(e) => form.handleChange('currentStock', Number(e.target.value))} />
         </div>
         <div className="flex justify-end gap-3 mt-6">
           <Button variant="secondary" onClick={createModal.close}>取消</Button>
-          <Button onClick={createModal.close}>{selectedProduct ? '保存' : '创建'}</Button>
+          <Button onClick={handleSave} isLoading={isSaving}>{selectedProduct ? '保存' : '创建'}</Button>
         </div>
       </Modal>
 
-      {/* Stock Operation Modal */}
       <Modal isOpen={stockModal.isOpen} onClose={stockModal.close} title={stockOperation === 'in' ? '入库操作' : '出库操作'}>
         {selectedProduct && (
           <div className="space-y-4">
             <div className="p-4 bg-surface-50 rounded-xl">
               <p className="font-medium text-surface-900">{selectedProduct.name}</p>
-              <p className="text-sm text-surface-500">{selectedProduct.code} | 当前库存: {selectedProduct.currentStock} {selectedProduct.unit}</p>
+              <p className="text-sm text-surface-500">{selectedProduct.code} | 当前库存: {selectedProduct.currentStock ?? 0} {selectedProduct.unit}</p>
             </div>
-            <Input label="数量" type="number" value={stockForm.values.quantity} onChange={(e) => stockForm.handleChange('quantity', Number(e.target.value))} />
+            <Input label="数量 *" type="number" value={stockForm.values.quantity} onChange={(e) => stockForm.handleChange('quantity', Number(e.target.value))} />
             <Input label="单价" type="number" value={stockForm.values.unitPrice} onChange={(e) => stockForm.handleChange('unitPrice', Number(e.target.value))} />
             <Input label="备注" value={stockForm.values.remark} onChange={(e) => stockForm.handleChange('remark', e.target.value)} />
             <div className="flex justify-end gap-3 mt-6">
               <Button variant="secondary" onClick={stockModal.close}>取消</Button>
-              <Button variant={stockOperation === 'in' ? 'success' : 'primary'} onClick={stockModal.close}>
+              <Button variant={stockOperation === 'in' ? 'success' : 'primary'} onClick={handleStockSave} isLoading={isSaving}>
                 确认{stockOperation === 'in' ? '入库' : '出库'}
               </Button>
             </div>
           </div>
         )}
-      </Modal>
-
-      {/* Scanner Modal */}
-      <Modal isOpen={scannerModal.isOpen} onClose={scannerModal.close} title="扫码枪设置">
-        <div className="space-y-4">
-          <div className={cn('p-4 rounded-xl flex items-center gap-3', scannerConnected ? 'bg-success-50' : 'bg-surface-100')}>
-            {scannerConnected ? <Wifi className="h-5 w-5 text-success-600" /> : <WifiOff className="h-5 w-5 text-surface-400" />}
-            <div>
-              <p className="font-medium">{scannerConnected ? '已连接' : '未连接'}</p>
-              <p className="text-sm text-surface-500">扫码枪状态</p>
-            </div>
-          </div>
-          <Select label="串口选择" options={[{ value: 'COM1', label: 'COM1' }, { value: 'COM2', label: 'COM2' }]} value="COM1" onChange={() => { }} />
-          <div className="flex justify-end gap-3">
-            <Button variant="secondary" onClick={scannerModal.close}>关闭</Button>
-            {scannerConnected ? (
-              <Button variant="danger" onClick={() => { disconnect(); scannerModal.close(); }}>断开连接</Button>
-            ) : (
-              <Button onClick={() => { connect('COM1'); scannerModal.close(); }}>连接</Button>
-            )}
-          </div>
-        </div>
       </Modal>
 
       <Modal isOpen={detailModal.isOpen} onClose={detailModal.close} title="产品详情" size="lg">
@@ -298,20 +423,20 @@ export function InventoryPage() {
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div><span className="text-surface-500">产品名称:</span> {selectedProduct.name}</div>
               <div><span className="text-surface-500">产品编码:</span> {selectedProduct.code}</div>
-              <div><span className="text-surface-500">条形码:</span> {selectedProduct.barcode}</div>
-              <div><span className="text-surface-500">品牌:</span> {selectedProduct.brand}</div>
-              <div><span className="text-surface-500">类别:</span> {selectedProduct.category}</div>
-              <div><span className="text-surface-500">规格:</span> {selectedProduct.specification}</div>
-              <div><span className="text-surface-500">当前库存:</span> {selectedProduct.currentStock} {selectedProduct.unit}</div>
-              <div><span className="text-surface-500">库位:</span> {selectedProduct.location}</div>
-              <div><span className="text-surface-500">成本价:</span> {formatCurrency(selectedProduct.costPrice)}</div>
-              <div><span className="text-surface-500">售价:</span> {formatCurrency(selectedProduct.sellPrice)}</div>
+              <div><span className="text-surface-500">条形码:</span> {selectedProduct.barcode || '-'}</div>
+              <div><span className="text-surface-500">品牌:</span> {selectedProduct.brand || '-'}</div>
+              <div><span className="text-surface-500">类别:</span> {selectedProduct.category || '-'}</div>
+              <div><span className="text-surface-500">规格:</span> {selectedProduct.specification || '-'}</div>
+              <div><span className="text-surface-500">当前库存:</span> {selectedProduct.currentStock ?? 0} {selectedProduct.unit}</div>
+              <div><span className="text-surface-500">库位:</span> {selectedProduct.location || '-'}</div>
+              <div><span className="text-surface-500">成本价:</span> {formatCurrency(selectedProduct.costPrice || 0)}</div>
+              <div><span className="text-surface-500">售价:</span> {formatCurrency(selectedProduct.sellPrice || 0)}</div>
             </div>
           </div>
         )}
       </Modal>
 
-      <ConfirmDialog isOpen={deleteModal.isOpen} onClose={deleteModal.close} onConfirm={deleteModal.close} title="删除产品" message={`确定要删除产品 "${selectedProduct?.name}" 吗？`} variant="danger" confirmText="删除" />
+      <ConfirmDialog isOpen={deleteModal.isOpen} onClose={deleteModal.close} onConfirm={handleConfirmDelete} title="删除产品" message={`确定要删除产品 "${selectedProduct?.name}" 吗？`} variant="danger" confirmText="删除" />
     </div>
   );
 }
