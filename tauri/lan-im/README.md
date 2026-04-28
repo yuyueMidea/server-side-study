@@ -33,7 +33,7 @@
 cd lan-im
 
 # 2. 一键安装（或手动执行下面的步骤）
-bash setup.sh
+npm i
 
 # 3. 开发模式启动（热重载）
 npm run tauri dev
