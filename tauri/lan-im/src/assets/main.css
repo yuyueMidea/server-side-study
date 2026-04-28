@@ -1,0 +1,71 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * { box-sizing: border-box; }
+
+  ::-webkit-scrollbar { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb {
+    background: theme("colors.surface.700");
+    border-radius: 99px;
+  }
+  ::-webkit-scrollbar-thumb:hover { background: theme("colors.surface.600"); }
+
+  ::selection {
+    background: theme("colors.accent.500");
+    color: #fff;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-accent-500 hover:bg-accent-600 text-white font-medium
+           px-4 py-2 rounded-lg transition-all duration-150
+           active:scale-95 disabled:opacity-40 disabled:pointer-events-none;
+  }
+  .btn-ghost {
+    @apply text-surface-300 hover:text-white hover:bg-surface-800
+           px-3 py-2 rounded-lg transition-all duration-150;
+  }
+  .input-base {
+    @apply w-full bg-surface-800 border border-surface-700
+           text-surface-100 placeholder-surface-500
+           px-3 py-2 rounded-lg outline-none
+           focus:border-accent-500 focus:ring-1 focus:ring-accent-500/30
+           transition-all duration-150;
+  }
+  .card {
+    @apply bg-surface-900 border border-surface-800 rounded-xl;
+  }
+  .user-row {
+    @apply flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer
+           transition-all duration-150 hover:bg-surface-800;
+  }
+  .user-row.active {
+    @apply bg-surface-800 border border-surface-700;
+  }
+}
+
+/* fade-slide transition */
+.fade-slide-enter-active,
+.fade-slide-leave-active { transition: all .2s ease; }
+.fade-slide-enter-from { opacity: 0; transform: translateY(8px); }
+.fade-slide-leave-to   { opacity: 0; transform: translateY(-8px); }
+
+/* message bubble pop */
+@keyframes bubble-pop {
+  0%   { opacity: 0; transform: scale(.92) translateY(6px); }
+  100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+.bubble-pop { animation: bubble-pop .18s ease forwards; }
+
+/* typing dot */
+@keyframes typing-dot {
+  0%, 80%, 100% { transform: scale(0); opacity: 0; }
+  40%           { transform: scale(1); opacity: 1; }
+}
+.typing-dot:nth-child(1) { animation: typing-dot 1.2s .0s infinite; }
+.typing-dot:nth-child(2) { animation: typing-dot 1.2s .2s infinite; }
+.typing-dot:nth-child(3) { animation: typing-dot 1.2s .4s infinite; }
